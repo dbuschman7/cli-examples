@@ -161,4 +161,67 @@ ansible-vault rekey <file>
 
 ## Project Structure
 
-This repository follows standard Ansible directory structure conventions for roles and playbooks with global vault integration.
+```
+.
+├── .vault/                      # Vault password storage
+│   └── password                 # Vault password file (default: "changeme")
+├── .venv/                       # Python virtual environment
+├── activate.sh                  # Convenience script to activate venv
+├── ansible.cfg                  # Ansible configuration with vault settings
+├── bin/                         # Vault helper scripts
+│   ├── vault-view               # View encrypted vault files
+│   ├── vault-edit               # Edit encrypted vault files
+│   ├── vault-get-var            # Get single variable value from vault
+│   ├── vault-add-var            # Add variable to vault (interactive)
+│   ├── vault-password-change    # Change vault password with backup
+│   └── vault-rekey              # Rekey files after password change
+├── group_vars/                  # Group variables
+│   └── all/                     # Variables for all hosts
+│       └── vault.yml            # Encrypted secrets (vault_* variables)
+├── inventory/                   # Inventory files (to be created)
+├── roles/                       # Ansible roles (to be created)
+└── CLAUDE.md                    # This file
+
+Note: This is an example repository. The .vault/password file is committed for
+demonstration purposes. In production, always add .vault/password to .gitignore.
+```
+
+## Variable Naming Convention
+
+All vault variables follow the pattern: `vault_{feature}_{group}_{name}`
+
+Examples:
+- `vault_database_production_host` - Production database host
+- `vault_api_staging_key` - Staging API key
+- `vault_app_secret_key` - Application secret key
+
+This naming convention:
+- Makes vault variables easily identifiable
+- Provides clear organization by feature and environment
+- Prevents naming conflicts with non-sensitive variables
+
+## Current Vault Contents
+
+The example vault file (`group_vars/all/vault.yml`) contains:
+- Database credentials (user, password, host, port)
+- API keys and secrets
+- AWS credentials (example keys)
+- Application secrets (Flask, JWT)
+- SSH deploy keys
+- Custom added variables (database_production_host, api_staging_key)
+
+## Development Workflow
+
+1. **Setup**: Run `source activate.sh` to activate the Python environment
+2. **View secrets**: Use `./bin/vault-view group_vars/all/vault.yml`
+3. **Add secrets**: Use `./bin/vault-add-var` for interactive addition
+4. **Get secrets**: Use `./bin/vault-get-var <variable-name>` in scripts
+5. **Edit secrets**: Use `./bin/vault-edit group_vars/all/vault.yml`
+6. **Change password**: Use `./bin/vault-password-change`, then rekey all files
+
+## Session Information
+
+**Ansible Version**: 12.1.0 (core 2.19.3)
+**Python Version**: 3.13.5
+**Vault Password**: changeme (default, change for production use)
+**Config File**: ./ansible.cfg (automatically detected by Ansible)
