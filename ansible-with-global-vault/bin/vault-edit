@@ -1,0 +1,27 @@
+#!/bin/bash
+# Edit an encrypted vault file
+
+# Get the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
+
+# Check if file parameter is provided
+if [ -z "$1" ]; then
+    echo "Error: File path required"
+    echo "Usage: $0 <file>"
+    echo ""
+    echo "Example:"
+    echo "  $0 group_vars/all/vault.yml"
+    exit 1
+fi
+
+FILE="$1"
+
+# Check if file exists
+if [ ! -f "${PROJECT_ROOT}/${FILE}" ]; then
+    echo "Error: File not found: ${FILE}"
+    exit 1
+fi
+
+# Edit the file using ansible-vault
+"${PROJECT_ROOT}/.venv/bin/ansible-vault" edit "${PROJECT_ROOT}/${FILE}"
