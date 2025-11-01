@@ -1,0 +1,15 @@
+# Python virtual environment
+.venv/
+
+# Generated directory structure
+top/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/

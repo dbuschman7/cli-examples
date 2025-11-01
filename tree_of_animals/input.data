@@ -1,0 +1,20 @@
+There exists animals
+Cows are animals
+Cows have legs(number: 4)
+
+Birds are animals
+Birds have wings(number:2)
+
+Cats are animals
+Cats have legs(number=4)
+Cats have tail(number=1)
+
+There exists plants
+Trees are Plants
+Trees have Leaves(number=1000)
+
+Grasses are plants
+Grasses have blades(number=10)
+
+Cats eat Birds
+Cows eat Grasses
