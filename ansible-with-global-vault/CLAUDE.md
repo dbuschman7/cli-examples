@@ -88,6 +88,26 @@ The `bin/` directory contains convenience scripts for common vault operations. T
 # Example: ./bin/vault-edit group_vars/all/vault.yml
 ```
 
+**Get variable value from vault:**
+```bash
+./bin/vault-get-var <variable-name-pattern> [vault-file]
+# Returns only the value on stdout (no variable name)
+# Supports grep patterns for variable names
+# Example: ./bin/vault-get-var vault_db_password
+# Example: ./bin/vault-get-var vault_database_production_host
+# Errors on stderr with exit code 1 if multiple or no matches found
+```
+
+**Add variable to vault:**
+```bash
+./bin/vault-add-var [vault-file]
+# Defaults to group_vars/all/vault.yml if no file specified
+# Prompts for: feature, group, name, value
+# Creates variable: vault_{feature}_{group}_{name}
+# Example: feature=database, group=production, name=host
+#          Result: vault_database_production_host: "value"
+```
+
 **Change vault password:**
 ```bash
 ./bin/vault-password-change <new-password>
@@ -102,7 +122,7 @@ The `bin/` directory contains convenience scripts for common vault operations. T
 # Note: Run vault-password-change first, then rekey all encrypted files
 ```
 
-All scripts require parameters and will display usage help if called without arguments.
+Most scripts require parameters and will display usage help if called without required arguments. The vault-add-var script uses interactive prompts.
 
 ## Ansible Vault Commands
 

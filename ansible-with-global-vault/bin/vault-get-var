@@ -1,0 +1,95 @@
+#!/bin/bash
+# Fetch a single value from a vault file
+
+# Get the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
+
+# Default vault file
+DEFAULT_VAULT_FILE="group_vars/all/vault.yml"
+
+# Function to show usage
+usage() {
+    echo "Usage: $0 <variable-name-pattern> [vault-file]" >&2
+    echo "" >&2
+    echo "Description:" >&2
+    echo "  Fetches a single variable value from an encrypted vault file." >&2
+    echo "  Returns only the value on stdout." >&2
+    echo "" >&2
+    echo "Parameters:" >&2
+    echo "  variable-name-pattern  Pattern to match variable name (supports grep patterns)" >&2
+    echo "  vault-file            Optional vault file path (default: group_vars/all/vault.yml)" >&2
+    echo "" >&2
+    echo "Examples:" >&2
+    echo "  $0 vault_db_password" >&2
+    echo "  $0 vault_database_production_host" >&2
+    echo "  $0 'vault_api.*key' group_vars/all/vault.yml" >&2
+    echo "" >&2
+    echo "Exit codes:" >&2
+    echo "  0 - Success (single value found)" >&2
+    echo "  1 - Error (no matches or multiple matches)" >&2
+    exit 1
+}
+
+# Check if variable name pattern is provided
+if [ -z "$1" ]; then
+    echo "Error: Variable name pattern required" >&2
+    echo "" >&2
+    usage
+fi
+
+VAR_PATTERN="$1"
+VAULT_FILE="${2:-${DEFAULT_VAULT_FILE}}"
+VAULT_FILE_PATH="${PROJECT_ROOT}/${VAULT_FILE}"
+
+# Check if vault file exists
+if [ ! -f "${VAULT_FILE_PATH}" ]; then
+    echo "Error: Vault file not found: ${VAULT_FILE}" >&2
+    exit 1
+fi
+
+# Create a temporary file
+TEMP_FILE=$(mktemp)
+
+# Decrypt vault file to temp file
+"${PROJECT_ROOT}/.venv/bin/ansible-vault" view "${VAULT_FILE_PATH}" > "${TEMP_FILE}" 2>/dev/null
+
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to decrypt vault file" >&2
+    rm -f "${TEMP_FILE}"
+    exit 1
+fi
+
+# Search for matching variables (grep for lines starting with the pattern followed by a colon)
+MATCHES=$(grep "^${VAR_PATTERN}:" "${TEMP_FILE}")
+MATCH_COUNT=$(echo "${MATCHES}" | grep -c "^")
+
+# Clean up temp file
+rm -f "${TEMP_FILE}"
+
+# Check if no matches found
+if [ -z "${MATCHES}" ] || [ "${MATCH_COUNT}" -eq 0 ]; then
+    echo "Error: No variable found matching pattern: ${VAR_PATTERN}" >&2
+    exit 1
+fi
+
+# Check if multiple matches found
+if [ "${MATCH_COUNT}" -gt 1 ]; then
+    echo "Error: Multiple variables found matching pattern: ${VAR_PATTERN}" >&2
+    echo "Matches:" >&2
+    echo "${MATCHES}" | sed 's/^/  /' >&2
+    exit 1
+fi
+
+# Extract the value (everything after the colon and optional space, remove quotes)
+VALUE=$(echo "${MATCHES}" | sed -E 's/^[^:]+:[[:space:]]*//' | sed -E 's/^"(.*)"$/\1/' | sed -E "s/^'(.*)'$/\1/")
+
+# Check if value extraction was successful
+if [ -z "${VALUE}" ]; then
+    echo "Error: Failed to extract value for variable: ${VAR_PATTERN}" >&2
+    exit 1
+fi
+
+# Output only the value to stdout
+echo "${VALUE}"
+exit 0
