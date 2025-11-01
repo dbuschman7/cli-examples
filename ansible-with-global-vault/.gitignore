@@ -4,8 +4,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Vault password file - DO NOT COMMIT
-.vault/password
+# Vault password file - This is an example repo so yet we will commit this file 
+### .vault/password
 
 # Ansible
 *.retry
