@@ -1,0 +1,146 @@
+# Test parsing /proc/net/udp format
+
+mapping: |
+  # Split the content into lines
+  root = this.split("\n")
+  
+  # Filter out empty lines and the header
+  root = root.filter(line -> line.length() > 0 && !line.contains("local_address"))
+  
+  # Parse each UDP connection line
+  root = root.map_each(line -> {
+    "raw_line": line,
+    "fields": line.split_regex("\\s+").filter(f -> f.length() > 0),
+  })
+  
+  # Extract meaningful fields from each connection
+  root = root.map_each(entry -> {
+    let queue_parts = entry.fields.index(4).split(":")
+    let tm_when_parts = entry.fields.index(5).split(":")
+    let local_parts = entry.fields.index(1).split(":")
+    let remote_parts = entry.fields.index(2).split(":")
+    "sl": entry.fields.index(0),
+    "local_address": local_parts.index(0),
+    "local_port_hex": local_parts.index(1),
+    "local_port": local_parts.index(1).parse_int(16),
+    "remote_address": remote_parts.index(0),
+    "remote_port_hex": remote_parts.index(1),
+    "remote_port": remote_parts.index(1).parse_int(16),
+    "state": entry.fields.index(3),
+    "tx_queue": queue_parts.index(0),
+    "rx_queue": queue_parts.index(1),
+    "tr": tm_when_parts.index(0),
+    "tm_when": tm_when_parts.index(1),
+    "retrnsmt": entry.fields.index(6),
+    "uid": entry.fields.index(7),
+    "timeout": entry.fields.index(8),
+    "inode": entry.fields.index(9),
+    "ref": entry.fields.index(10),
+    "pointer": entry.fields.index(11),
+    "drops": entry.fields.index(12),
+    "raw_line": entry.raw_line
+  })
+
+# Test case 1: Sample /proc/net/udp content with multiple entries
+input: |
+  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+    0: 00000000:0035 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 12345 2 0000000000000000 0
+    1: 0100007F:0277 00000000:0000 07 00000000:00000000 00:00000000 00000000   501        0 23456 2 0000000000000000 0
+    2: 00000000:0044 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 34567 2 0000000000000000 0
+
+output:
+  - sl: "0:"
+    local_address: "00000000"
+    local_port_hex: "0035"
+    local_port: 53
+    remote_address: "00000000"
+    remote_port_hex: "0000"
+    remote_port: 0
+    state: "07"
+    tx_queue: "00000000"
+    rx_queue: "00000000"
+    tr: "00"
+    tm_when: "00000000"
+    retrnsmt: "00000000"
+    uid: "0"
+    timeout: "0"
+    inode: "12345"
+    ref: "2"
+    pointer: "0000000000000000"
+    drops: "0"
+    raw_line: "  0: 00000000:0035 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 12345 2 0000000000000000 0"
+  - sl: "1:"
+    local_address: "0100007F"
+    local_port_hex: "0277"
+    local_port: 631
+    remote_address: "00000000"
+    remote_port_hex: "0000"
+    remote_port: 0
+    state: "07"
+    tx_queue: "00000000"
+    rx_queue: "00000000"
+    tr: "00"
+    tm_when: "00000000"
+    retrnsmt: "00000000"
+    uid: "501"
+    timeout: "0"
+    inode: "23456"
+    ref: "2"
+    pointer: "0000000000000000"
+    drops: "0"
+    raw_line: "  1: 0100007F:0277 00000000:0000 07 00000000:00000000 00:00000000 00000000   501        0 23456 2 0000000000000000 0"
+  - sl: "2:"
+    local_address: "00000000"
+    local_port_hex: "0044"
+    local_port: 68
+    remote_address: "00000000"
+    remote_port_hex: "0000"
+    remote_port: 0
+    state: "07"
+    tx_queue: "00000000"
+    rx_queue: "00000000"
+    tr: "00"
+    tm_when: "00000000"
+    retrnsmt: "00000000"
+    uid: "0"
+    timeout: "0"
+    inode: "34567"
+    ref: "2"
+    pointer: "0000000000000000"
+    drops: "0"
+    raw_line: "  2: 00000000:0044 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 34567 2 0000000000000000 0"
+
+# Test case 2: Single line entry
+---
+input: |
+  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+    0: 0100007F:1F90 00000000:0000 07 00000000:00000000 00:00000000 00000000   501        0 45678 2 0000000000000000 0
+
+output:
+  - sl: "0:"
+    local_address: "0100007F"
+    local_port_hex: "1F90"
+    local_port: 8080
+    remote_address: "00000000"
+    remote_port_hex: "0000"
+    remote_port: 0
+    state: "07"
+    tx_queue: "00000000"
+    rx_queue: "00000000"
+    tr: "00"
+    tm_when: "00000000"
+    retrnsmt: "00000000"
+    uid: "501"
+    timeout: "0"
+    inode: "45678"
+    ref: "2"
+    pointer: "0000000000000000"
+    drops: "0"
+    raw_line: "  0: 0100007F:1F90 00000000:0000 07 00000000:00000000 00:00000000 00000000   501        0 45678 2 0000000000000000 0"
+
+# Test case 3: Empty content (just header)
+---
+input: |
+  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+
+output: []
