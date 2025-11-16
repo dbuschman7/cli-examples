@@ -8,6 +8,7 @@ import time
 import os
 import argparse
 import logging
+import subprocess
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,6 +21,29 @@ import warnings
 
 warnings.filterwarnings(action="ignore", module=".*paramiko.*")
 import paramiko
+
+
+def resolve_hostname(hostname: str) -> Optional[str]:
+    """Resolve hostname to IP address using dig command.
+
+    Returns IP address if successful, None if resolution fails.
+    """
+    try:
+        result = subprocess.run(
+            ["dig", "+short", hostname],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            # dig can return multiple IPs, take the first one
+            ip = result.stdout.strip().split("\n")[0].strip()
+            # Verify it looks like an IP address (simple check)
+            if ip and not ip.endswith("."):
+                return ip
+        return None
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        return None
 
 
 def parse_udp_line(line: str) -> Optional[Dict[str, Any]]:
@@ -100,13 +124,29 @@ class SSHWatcher:
         identity_file: Optional[str] = None,
         debug: bool = False,
     ):
-        """Initialize SSH connection to remote host."""
-        self.host = host
+        """Initialize SSH connection to remote host.
+
+        Args:
+            host: Hostname (user@host format supported)
+            username: SSH username (overrides user in host string)
+            identity_file: Path to SSH key file
+            debug: Enable debug logging
+        """
+        self.host = host  # Original hostname
         self.username = username
         self.identity_file = identity_file
         self.debug = debug
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        # Load SSH config
+        self.ssh_config = paramiko.SSHConfig()
+        try:
+            with open(os.path.expanduser("~/.ssh/config")) as f:
+                self.ssh_config.parse(f)
+        except FileNotFoundError:
+            pass  # No SSH config file
+
         self.channel = None
         self.connected = False
 
@@ -128,19 +168,42 @@ class SSHWatcher:
             console.print(f"[cyan]Debug: Starting SSH connection to {self.host}[/cyan]")
 
         # Parse username from host if in user@host format
-        if "@" in self.host and self.username is None:
-            self.username, self.host = self.host.split("@", 1)
+        connect_host = self.host
+        if "@" in self.host:
+            parts = self.host.split("@", 1)
+            if self.username is None:
+                self.username = parts[0]
+            connect_host = parts[1]
+
+        # Apply SSH config for this host
+        host_config = self.ssh_config.lookup(connect_host)
+
+        # Get hostname from config (may be different from connect_host)
+        hostname = host_config.get("hostname", connect_host)
+
+        # Get username from config if not specified
+        if self.username is None:
+            self.username = host_config.get("user", os.getenv("USER"))
+
+        # Get identity file from config if not specified
+        if self.identity_file is None and "identityfile" in host_config:
+            # identityfile can be a list
+            identity_files = host_config["identityfile"]
+            if isinstance(identity_files, list) and identity_files:
+                self.identity_file = os.path.expanduser(identity_files[0])
+            elif isinstance(identity_files, str):
+                self.identity_file = os.path.expanduser(identity_files)
 
         if self.debug and console:
             console.print(
-                f"[cyan]Debug: Username: {self.username}, Host: {self.host}[/cyan]"
+                f"[cyan]Debug: Username: {self.username}, Hostname: {hostname}, Identity: {self.identity_file}[/cyan]"
             )
 
         # Configure connection parameters
         connect_kwargs = {
-            "hostname": self.host,
+            "hostname": hostname,
             "username": self.username,
-            "timeout": 10,  # Add connection timeout
+            "timeout": 10,
         }
 
         # Add identity file if specified
