@@ -77,8 +77,10 @@ def read_proc_net_udp() -> List[Dict[str, Any]]:
     return connections
 
 
-def create_table(connections: List[Dict[str, Any]]) -> Table:
-    """Create a Rich table from UDP connections data."""
+def create_table(
+    connections: List[Dict[str, Any]], previous_connections: Dict[str, Dict[str, Any]]
+) -> Table:
+    """Create a Rich table from UDP connections data with change highlighting."""
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     table = Table(
         title=f"UDP Connections (/proc/net/udp) - {current_time}",
@@ -99,16 +101,31 @@ def create_table(connections: List[Dict[str, Any]]) -> Table:
 
     # Add rows
     for conn in connections:
+        inode = conn["inode"]
+        prev = previous_connections.get(inode, {})
+
+        # Helper function to highlight changes
+        def format_field(value: Any, field_name: str, default_style: str = "") -> str:
+            str_value = str(value)
+            if prev and field_name in prev and prev[field_name] != value:
+                # Highlight changed values with inverted colors
+                return f"[reverse]{str_value}[/reverse]"
+            return (
+                f"[{default_style}]{str_value}[/{default_style}]"
+                if default_style
+                else str_value
+            )
+
         table.add_row(
             conn["sl"],
-            str(conn["local_port"]),
-            str(conn["remote_port"]),
-            conn["state"],
-            str(conn["rx_queue"]),
-            str(conn["tx_queue"]),
-            str(conn["drops"]),
-            conn["uid"],
-            conn["inode"],
+            format_field(conn["local_port"], "local_port", "cyan"),
+            format_field(conn["remote_port"], "remote_port", "cyan"),
+            format_field(conn["state"], "state"),
+            format_field(conn["rx_queue"], "rx_queue", "yellow"),
+            format_field(conn["tx_queue"], "tx_queue", "yellow"),
+            format_field(conn["drops"], "drops", "red"),
+            format_field(conn["uid"], "uid", "green"),
+            format_field(conn["inode"], "inode", "blue"),
         )
 
     return table
@@ -127,17 +144,23 @@ def main():
     args = parser.parse_args()
     console = Console()
 
+    # Dictionary to track previous connections by inode
+    previous_connections: Dict[str, Dict[str, Any]] = {}
+
     try:
         with Live(console=console, refresh_per_second=1, screen=True) as live:
             while True:
                 # Read and parse the UDP connections
                 connections = read_proc_net_udp()
 
-                # Create the table
-                table = create_table(connections)
+                # Create the table with change detection
+                table = create_table(connections, previous_connections)
 
                 # Update the display
                 live.update(table)
+
+                # Update previous connections for next iteration
+                previous_connections = {conn["inode"]: conn for conn in connections}
 
                 # Wait before next refresh
                 time.sleep(args.interval)
