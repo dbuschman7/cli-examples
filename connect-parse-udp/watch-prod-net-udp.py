@@ -10,7 +10,8 @@ import argparse
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from rich.console import Console
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from rich.console import Console, Group
 from rich.table import Table
 from rich.live import Live
 
@@ -292,6 +293,22 @@ def create_table(
     return table
 
 
+def read_host_data(
+    host: str,
+    ssh_watcher: Optional[SSHWatcher],
+    debug: bool = False,
+    console: Optional[Console] = None,
+) -> List[Dict[str, Any]]:
+    """Read UDP connection data from a host (local or remote)."""
+    if ssh_watcher:
+        content = ssh_watcher.read_file(console=console if debug else None)
+        if content:
+            return parse_content(content)
+        return []
+    else:
+        return read_proc_net_udp_local()
+
+
 def main():
     """Main loop to display UDP connections."""
     parser = argparse.ArgumentParser(
@@ -305,8 +322,8 @@ def main():
         "-s",
         "--ssh",
         type=str,
-        metavar="HOST",
-        help="SSH host to monitor (e.g., user@hostname or hostname)",
+        metavar="HOST[,HOST...]",
+        help="SSH host(s) to monitor (e.g., user@hostname or hostname). Comma-separated for multiple hosts",
     )
     parser.add_argument(
         "-u",
@@ -338,62 +355,95 @@ def main():
     # Get identity file from command line or environment variable
     identity_file = args.identity_file or os.environ.get("SSH_IDENTITY_FILE")
 
-    # Dictionary to track previous connections by inode
-    previous_connections: Dict[str, Dict[str, Any]] = {}
-
-    # Setup SSH watcher if remote monitoring
-    ssh_watcher = None
+    # Parse hosts - split by comma if multiple
+    hosts = []
     if args.ssh:
-        try:
-            if args.debug:
-                console.print(
-                    "[yellow]Debug mode enabled. SSH logs will be written to /tmp/paramiko.log[/yellow]"
-                )
+        hosts = [h.strip() for h in args.ssh.split(",")]
+    else:
+        hosts = ["local"]  # Local monitoring
 
-            ssh_watcher = SSHWatcher(
-                args.ssh, args.username, identity_file, debug=args.debug
+    # Dictionary to track previous connections by host and inode
+    previous_connections: Dict[str, Dict[str, Dict[str, Any]]] = {
+        host: {} for host in hosts
+    }
+
+    # Setup SSH watchers for each remote host
+    ssh_watchers: Dict[str, Optional[SSHWatcher]] = {}
+
+    if args.ssh:
+        if args.debug:
+            console.print(
+                "[yellow]Debug mode enabled. SSH logs will be written to /tmp/paramiko.log[/yellow]"
             )
-            ssh_watcher.connect(console=console)
-        except Exception as e:
-            console.print(f"[red]Failed to connect to {args.ssh}: {e}[/red]")
-            if args.debug:
-                import traceback
 
-                console.print(f"[red]Traceback:\n{traceback.format_exc()}[/red]")
-            return
+        for host in hosts:
+            try:
+                if args.debug:
+                    console.print(f"[cyan]Connecting to {host}...[/cyan]")
 
-    # Buffer to accumulate watch output
-    output_buffer = ""
+                watcher = SSHWatcher(
+                    host, args.username, identity_file, debug=args.debug
+                )
+                watcher.connect(console=console if args.debug else None)
+                ssh_watchers[host] = watcher
+
+                if args.debug:
+                    console.print(f"[green]Connected to {host}[/green]")
+            except Exception as e:
+                console.print(f"[red]Failed to connect to {host}: {e}[/red]")
+                if args.debug:
+                    import traceback
+
+                    console.print(f"[red]Traceback:\n{traceback.format_exc()}[/red]")
+                ssh_watchers[host] = None
+    else:
+        ssh_watchers["local"] = None
 
     try:
         with Live(console=console, refresh_per_second=1, screen=True) as live:
             while True:
-                connections = []
+                # Collect data from all hosts concurrently
+                host_data: Dict[str, List[Dict[str, Any]]] = {}
 
-                if ssh_watcher:
-                    # Read from SSH cat command
-                    content = ssh_watcher.read_file(
-                        console=console if args.debug else None
+                def fetch_host_data(host: str) -> tuple[str, List[Dict[str, Any]]]:
+                    """Fetch data for a single host."""
+                    watcher = ssh_watchers.get(host)
+                    connections = read_host_data(
+                        host, watcher, args.debug, console if args.debug else None
                     )
-                    if content:
-                        connections = parse_content(content)
-                else:
-                    # Read from local file
-                    connections = read_proc_net_udp_local()
+                    return (host, connections)
 
-                # Create the table with change detection
-                table = create_table(
-                    connections,
-                    previous_connections,
-                    ssh_host=args.ssh,
-                    changes_only=args.changes_only,
-                )
+                # Use ThreadPoolExecutor to fetch from multiple hosts concurrently
+                with ThreadPoolExecutor(max_workers=len(hosts)) as executor:
+                    futures = {
+                        executor.submit(fetch_host_data, host): host for host in hosts
+                    }
+                    for future in as_completed(futures):
+                        host, connections = future.result()
+                        host_data[host] = connections
 
-                # Update the display
-                live.update(table)
+                # Create tables for each host
+                tables = []
+                for host in hosts:
+                    connections = host_data.get(host, [])
 
-                # Update previous connections for next iteration
-                previous_connections = {conn["inode"]: conn for conn in connections}
+                    # Create the table with change detection
+                    table = create_table(
+                        connections,
+                        previous_connections[host],
+                        ssh_host=host if host != "local" else None,
+                        changes_only=args.changes_only,
+                    )
+                    tables.append(table)
+
+                    # Update previous connections for this host
+                    previous_connections[host] = {
+                        conn["inode"]: conn for conn in connections
+                    }
+
+                # Display all tables together using Group
+                display = Group(*tables)
+                live.update(display)
 
                 # Wait before next refresh
                 time.sleep(args.interval)
@@ -401,8 +451,10 @@ def main():
     except KeyboardInterrupt:
         console.print("\n[yellow]Stopped by user[/yellow]")
     finally:
-        if ssh_watcher:
-            ssh_watcher.close()
+        # Close all SSH connections
+        for watcher in ssh_watchers.values():
+            if watcher:
+                watcher.close()
 
 
 if __name__ == "__main__":
