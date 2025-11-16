@@ -7,6 +7,7 @@ Refreshes every 2 seconds with screen clearing.
 import time
 import os
 import argparse
+import subprocess
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from rich.console import Console
@@ -55,35 +56,57 @@ def parse_udp_line(line: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def read_proc_net_udp() -> List[Dict[str, Any]]:
-    """Read and parse /proc/net/udp file."""
+def read_proc_net_udp(ssh_host: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Read and parse /proc/net/udp file, either locally or via SSH."""
     connections = []
+    content = ""
 
     try:
-        with open("/proc/net/udp", "r") as f:
-            # Skip the header line
-            next(f)
+        if ssh_host:
+            # Read from remote host via SSH
+            result = subprocess.run(
+                ["ssh", ssh_host, "cat /proc/net/udp"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                content = result.stdout
+            else:
+                # SSH command failed, return empty list
+                return connections
+        else:
+            # Read from local file
+            with open("/proc/net/udp", "r") as f:
+                content = f.read()
 
-            for line in f:
-                line = line.strip()
-                if line:
-                    parsed = parse_udp_line(line)
-                    if parsed:
-                        connections.append(parsed)
-    except FileNotFoundError:
-        # For systems without /proc/net/udp (like macOS), return empty list
+        # Parse the content
+        lines = content.strip().split("\n")
+        # Skip the header line
+        for line in lines[1:]:
+            line = line.strip()
+            if line:
+                parsed = parse_udp_line(line)
+                if parsed:
+                    connections.append(parsed)
+
+    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        # For systems without /proc/net/udp (like macOS) or SSH failures, return empty list
         pass
 
     return connections
 
 
 def create_table(
-    connections: List[Dict[str, Any]], previous_connections: Dict[str, Dict[str, Any]]
+    connections: List[Dict[str, Any]], 
+    previous_connections: Dict[str, Dict[str, Any]],
+    ssh_host: Optional[str] = None
 ) -> Table:
     """Create a Rich table from UDP connections data with change highlighting."""
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    host_info = f" on {ssh_host}" if ssh_host else " (local)"
     table = Table(
-        title=f"UDP Connections (/proc/net/udp) - {current_time}",
+        title=f"UDP Connections (/proc/net/udp){host_info} - {current_time}",
         show_header=True,
         header_style="bold magenta",
     )
@@ -140,6 +163,12 @@ def main():
     parser.add_argument(
         "-i", "--interval", type=float, default=2.0, help="Refresh interval in seconds"
     )
+    parser.add_argument(
+        "-s", "--ssh",
+        type=str,
+        metavar="HOST",
+        help="SSH host to monitor (e.g., user@hostname or hostname)"
+    )
 
     args = parser.parse_args()
     console = Console()
@@ -151,10 +180,10 @@ def main():
         with Live(console=console, refresh_per_second=1, screen=True) as live:
             while True:
                 # Read and parse the UDP connections
-                connections = read_proc_net_udp()
+                connections = read_proc_net_udp(ssh_host=args.ssh)
 
                 # Create the table with change detection
-                table = create_table(connections, previous_connections)
+                table = create_table(connections, previous_connections, ssh_host=args.ssh)
 
                 # Update the display
                 live.update(table)
