@@ -7,6 +7,7 @@ Refreshes every 2 seconds with screen clearing.
 import time
 import os
 import argparse
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.table import Table
@@ -78,8 +79,9 @@ def read_proc_net_udp() -> List[Dict[str, Any]]:
 
 def create_table(connections: List[Dict[str, Any]]) -> Table:
     """Create a Rich table from UDP connections data."""
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     table = Table(
-        title="UDP Connections (/proc/net/udp)",
+        title=f"UDP Connections (/proc/net/udp) - {current_time}",
         show_header=True,
         header_style="bold magenta",
     )
