@@ -51,14 +51,37 @@ Options:
   -f, --hosts-file FILE    File containing list of hostnames (required)
   -u, --username USER      SSH username (if not in hostname as user@host)
   --identity-file PATH     SSH identity file (private key) path
-  -w, --workers N          Maximum concurrent connections (default: 10)
+  -w, --workers N          Maximum concurrent SSH connections (default: 5)
+  -j, --jobs N             Alias for --workers (task queue size)
   --debug                  Enable debug logging
+```
+
+### Task Queue
+
+The script uses a task queue to limit concurrent SSH connections. When you have more hosts than workers, they are queued and executed as workers become available:
+
+- **Default**: 5 concurrent workers
+- **Configurable**: Use `-w` or `-j` to adjust
+- **Progress**: Shows which hosts are starting and completing in real-time
+
+Example with 8 hosts but only 2 concurrent workers:
+```bash
+./collect-from-hosts.py -f many-hosts.txt -w 2
+
+📋 Task Queue: 8 hosts, 2 concurrent workers
+  → Starting: host1
+  → Starting: host2
+  ✓ Completed (1/8): host1
+  → Starting: host3
+  ✓ Completed (2/8): host2
+  → Starting: host4
+  ...
 ```
 
 ### Examples
 
 ```bash
-# Basic usage
+# Basic usage (default: 5 concurrent workers)
 ./collect-from-hosts.py -f hosts.txt
 
 # Specify username for all hosts
@@ -67,8 +90,11 @@ Options:
 # Use specific SSH key
 ./collect-from-hosts.py -f hosts.txt --identity-file ~/.ssh/my_key
 
-# Limit concurrent connections
-./collect-from-hosts.py -f hosts.txt -w 5
+# Limit concurrent connections to 2 (useful for slower networks)
+./collect-from-hosts.py -f hosts.txt -w 2
+
+# Increase concurrent connections to 10 (for fast networks)
+./collect-from-hosts.py -f hosts.txt -j 10
 
 # Enable debug mode
 ./collect-from-hosts.py -f hosts.txt --debug

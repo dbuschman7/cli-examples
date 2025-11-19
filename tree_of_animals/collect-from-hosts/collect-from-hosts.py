@@ -291,54 +291,38 @@ def execute_on_hosts(
     hosts: List[str],
     username: Optional[str] = None,
     identity_file: Optional[str] = None,
-    max_workers: int = 5,
+    max_workers: int = 10,
     debug: bool = False,
-    show_progress: bool = True,
 ) -> List[Dict[str, Any]]:
-    """Execute commands on multiple hosts concurrently using a task queue.
-
-    Uses ThreadPoolExecutor to limit concurrent SSH connections. Hosts are
-    queued and executed as workers become available.
+    """Execute commands on multiple hosts concurrently.
 
     Args:
         executor_class: Class derived from CommandExecutor to use
         hosts: List of hostnames to connect to
         username: SSH username (optional)
         identity_file: Path to SSH identity file (optional)
-        max_workers: Maximum number of concurrent SSH connections (default: 5)
+        max_workers: Maximum number of concurrent connections
         debug: Enable debug logging
-        show_progress: Show progress messages as hosts complete
 
     Returns:
         List of result dictionaries, one per host
     """
     results = []
-    completed = 0
-    total = len(hosts)
 
     def execute_on_host(host: str) -> Dict[str, Any]:
         """Execute on a single host."""
-        if show_progress and not debug:
-            print(f"  → Starting: {host}")
         executor = executor_class(host, username, identity_file, debug)
         return executor.execute()
 
-    # Execute concurrently on all hosts with task queue
-    if show_progress:
-        print(f"\n📋 Task Queue: {total} hosts, {max_workers} concurrent workers")
-
+    # Execute concurrently on all hosts
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(execute_on_host, host): host for host in hosts}
         for future in as_completed(futures):
             host = futures[future]
-            completed += 1
             try:
                 result = future.result()
                 results.append(result)
-                if show_progress and not debug:
-                    status = "✓" if result["success"] else "✗"
-                    print(f"  {status} Completed ({completed}/{total}): {host}")
-                elif debug:
+                if debug:
                     print(f"Completed execution on {host}")
             except Exception as e:
                 results.append(
@@ -401,15 +385,8 @@ def main():
         "-w",
         "--workers",
         type=int,
-        default=5,
-        help="Maximum number of concurrent SSH connections (task queue size)",
-    )
-    parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        dest="workers",
-        help="Alias for --workers (maximum concurrent jobs)",
+        default=10,
+        help="Maximum number of concurrent SSH connections",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
@@ -421,7 +398,7 @@ def main():
     # Read hosts from file
     try:
         hosts = read_hosts_file(args.hosts_file)
-        print(f"📁 Read {len(hosts)} hosts from {args.hosts_file}")
+        print(f"Read {len(hosts)} hosts from {args.hosts_file}")
     except FileNotFoundError:
         print(f"Error: Hosts file '{args.hosts_file}' not found")
         return 1
@@ -434,9 +411,7 @@ def main():
         return 1
 
     # Execute on all hosts using the example executor
-    print(
-        f"🚀 Executing commands on {len(hosts)} hosts with {args.workers} concurrent workers..."
-    )
+    print(f"Executing commands on {len(hosts)} hosts...")
     results = execute_on_hosts(
         ExampleExecutor,
         hosts,
@@ -444,7 +419,6 @@ def main():
         identity_file=identity_file,
         max_workers=args.workers,
         debug=args.debug,
-        show_progress=not args.debug,
     )
 
     # Display results
