@@ -1,0 +1,9 @@
+# Example hosts file
+# One hostname per line
+# Comments start with #
+# Supports user@host format
+
+# localhost
+# example.com
+# user@server.example.com
+# 192.168.1.100
