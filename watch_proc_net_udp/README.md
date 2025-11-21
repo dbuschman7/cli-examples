@@ -7,8 +7,8 @@ Tools for monitoring and parsing `/proc/net/udp` connections on Linux systems, w
 This directory contains:
 
 - **`watch-prod-net-udp.py`** - Python script for real-time UDP connection monitoring with a table display
-- **`parse-prod-net-udp.yaml`** - Redpanda Connect (Benthos) configuration for streaming UDP data
-- **`parse-prod-net-udp_test.blobl`** - Bloblang test file for validating parsing logic
+- **`parse-proc-net-udp.yaml`** - Redpanda Connect (Benthos) configuration for streaming UDP data
+- **`parse-proc-net-udp_test.blobl`** - Bloblang test file for validating parsing logic
 - **`requirements.txt`** - Python dependencies
 - **`activate.sh`** - Helper script to activate the Python virtual environment
 
@@ -139,7 +139,7 @@ When a value changes between refresh intervals, it appears with **inverted color
 
 Press `Ctrl+C` to stop monitoring.
 
-## Redpanda Connect Stream (`parse-prod-net-udp.yaml`)
+## Redpanda Connect Stream (`parse-proc-net-udp.yaml`)
 
 ### Overview
 
@@ -154,10 +154,10 @@ A Redpanda Connect (formerly Benthos) configuration that:
 
 ```bash
 # Run with rpk
-rpk connect run parse-prod-net-udp.yaml
+rpk connect run parse-proc-net-udp.yaml
 
 # Or with benthos CLI
-benthos -c parse-prod-net-udp.yaml
+benthos -c parse-proc-net-udp.yaml
 ```
 
 ### Prometheus Metrics
@@ -175,7 +175,7 @@ View metrics:
 curl http://localhost:4195/metrics
 ```
 
-## Bloblang Tests (`parse-prod-net-udp_test.blobl`)
+## Bloblang Tests (`parse-proc-net-udp_test.blobl`)
 
 ### Overview
 
@@ -185,7 +185,7 @@ Test suite for validating the Bloblang parsing logic with sample `/proc/net/udp`
 
 ```bash
 # Run tests
-rpk connect blobl test parse-prod-net-udp_test.blobl
+rpk connect blobl test parse-proc-net-udp_test.blobl
 ```
 
 ### Test Cases
