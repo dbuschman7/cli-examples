@@ -1,0 +1,78 @@
+input:
+  file:
+    paths: ["/proc/net/udp"]
+    codec: lines
+
+pipeline:
+  processors:
+    - bloblang: |
+        # Skip empty lines and header
+        root = if content().length() == 0 || content().contains("local_address") {
+          deleted()
+        } else {
+          content().re_find_all("\\S+")
+        }
+    
+    - bloblang: |
+        # Parse the UDP connection line from the array of fields
+        root = if this.length() >= 13 {
+          {
+            "sl": this.index(0),
+            "local_address": this.index(1).split(":").index(0),
+            "local_port_hex": this.index(1).split(":").index(1),
+            "remote_address": this.index(2).split(":").index(0),
+            "remote_port_hex": this.index(2).split(":").index(1),
+            "state": this.index(3),
+            "tx_queue": this.index(4).split(":").index(0),
+            "rx_queue": this.index(4).split(":").index(1),
+            "tr": this.index(5).split(":").index(0),
+            "tm_when": this.index(5).split(":").index(1),
+            "retrnsmt": this.index(6),
+            "uid": this.index(7),
+            "timeout": this.index(8),
+            "inode": this.index(9),
+            "ref": this.index(10),
+            "pointer": this.index(11),
+            "drops": this.index(12),
+            "timestamp": now()
+          }
+        } else {
+          deleted()
+        }
+    
+    - command:
+        name: python3
+        args_mapping: 'root = [ "-c", "import json, sys; d = json.load(sys.stdin); d[''local_port''] = int(d[''local_port_hex''], 16); d[''remote_port''] = int(d[''remote_port_hex''], 16); print(json.dumps(d))" ]'
+
+    - metric:
+        type: gauge
+        name: udp_rx_queue_bytes
+        labels:
+          local_port: ${! this.local_port }
+          local_address: ${! this.local_address }
+          remote_port: ${! this.remote_port }
+          remote_address: ${! this.remote_address }
+          state: ${! this.state }
+          uid: ${! this.uid }
+          inode: ${! this.inode }
+        value: ${! this.rx_queue.number(16) }
+
+    - metric:
+        type: counter
+        name: udp_drops_total
+        labels:
+          local_port: ${! this.local_port }
+          local_address: ${! this.local_address }
+          remote_port: ${! this.remote_port }
+          remote_address: ${! this.remote_address }
+          state: ${! this.state }
+          uid: ${! this.uid }
+          inode: ${! this.inode }
+        value: ${! this.drops.number() }
+
+metrics:
+  prometheus: {}
+
+output:
+  stdout:
+    codec: lines
