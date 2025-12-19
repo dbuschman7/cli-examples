@@ -618,9 +618,9 @@
         // Analyze columns to determine which should have dropdown filters
         function analyzeColumnsForFilters() {
             const filterContainer = document.getElementById('filterDropdowns');
-            const allColumns = tableData.length > 0 ? Object.keys(tableData[0]) : [];
 
-            allColumns.forEach(column => {
+            // Only create filters for columns that are displayed in the table
+            displayColumns.forEach(column => {
                 const uniqueValues = [...new Set(tableData.map(row => row[column]))];
 
                 if (uniqueValues.length <= MAX_FILTER_VALUES && uniqueValues.length > 1) {
