@@ -102,15 +102,6 @@
             gap: 12px;
         }
 
-        /* Row count bar */
-        .row-count-bar {
-            display: flex;
-            align-items: center;
-            padding: 4px 12px;
-            background-color: var(--bg-primary);
-            border-bottom: 1px solid var(--border-color);
-        }
-
         .toolbar-group {
             display: flex;
             align-items: center;
@@ -517,6 +508,7 @@
                     <label for="globalFilter">Search:</label>
                     <input type="text" id="globalFilter" placeholder="Filter all columns...">
                 </div>
+                <span class="row-count" id="rowCount">0 rows</span>
             </div>
             <div class="titlebar-right">
                 <button class="versions-btn" id="versionsBtn">📋 Versions</button>
@@ -524,9 +516,6 @@
                     <button id="themeToggle">🌙 Dark</button>
                 </div>
             </div>
-        </div>
-        <div class="row-count-bar">
-            <span class="row-count" id="rowCount">0 rows</span>
         </div>
         <div class="versions-panel" id="versionsPanel">
             <div class="versions-header">
