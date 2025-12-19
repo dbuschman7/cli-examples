@@ -72,13 +72,43 @@
             height: 100vh;
         }
 
-        /* Header / Toolbar */
+        /* Title Bar */
+        .titlebar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .titlebar-center {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .titlebar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Toolbar */
         .toolbar {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 8px 12px;
-            background-color: var(--bg-secondary);
+            padding: 6px 12px;
+            background-color: var(--bg-primary);
             border-bottom: 1px solid var(--border-color);
             flex-wrap: wrap;
         }
@@ -89,12 +119,14 @@
             gap: 6px;
         }
 
+        .titlebar label,
         .toolbar label {
             font-weight: 500;
             color: var(--text-secondary);
             font-size: 12px;
         }
 
+        .titlebar input[type="text"],
         .toolbar input[type="text"] {
             padding: 4px 8px;
             border: 1px solid var(--border-color);
@@ -105,12 +137,14 @@
             width: 180px;
         }
 
+        .titlebar input[type="text"]:focus,
         .toolbar input[type="text"]:focus {
             outline: none;
             border-color: var(--accent-1);
             box-shadow: 0 0 0 2px rgba(38, 139, 210, 0.2);
         }
 
+        .titlebar select,
         .toolbar select {
             padding: 4px 8px;
             border: 1px solid var(--border-color);
@@ -320,21 +354,13 @@
             font-weight: 600;
             color: var(--text-emphasis);
             margin: 0;
-            padding-right: 16px;
-            border-right: 2px solid var(--accent-1);
-            margin-right: 8px;
-        }
-
-        .toolbar-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-left: auto;
         }
 
         .generation-date {
             font-size: 11px;
             color: var(--text-secondary);
+            padding-left: 12px;
+            border-left: 2px solid var(--accent-1);
         }
 
         .versions-btn {
@@ -436,23 +462,29 @@
 
 <body>
     <div class="container">
-        <div class="toolbar">
-            <h1 class="page-title" id="pageTitle"></h1>
-            <span class="generation-date" id="generationDate"></span>
-            <button class="versions-btn" id="versionsBtn">📋 Versions</button>
-            <div class="toolbar-group">
-                <label for="globalFilter">Search:</label>
-                <input type="text" id="globalFilter" placeholder="Filter all columns...">
+        <div class="titlebar">
+            <div class="titlebar-left">
+                <h1 class="page-title" id="pageTitle"></h1>
+                <span class="generation-date" id="generationDate"></span>
             </div>
-            <div class="toolbar-group filter-dropdowns" id="filterDropdowns">
-                <!-- Dynamic filter dropdowns will be inserted here -->
+            <div class="titlebar-center">
+                <div class="toolbar-group">
+                    <label for="globalFilter">Search:</label>
+                    <input type="text" id="globalFilter" placeholder="Filter all columns...">
+                </div>
             </div>
-            <span class="row-count" id="rowCount">0 rows</span>
-            <div class="toolbar-right">
+            <div class="titlebar-right">
+                <button class="versions-btn" id="versionsBtn">📋 Versions</button>
                 <div class="theme-toggle">
                     <button id="themeToggle">🌙 Dark</button>
                 </div>
             </div>
+        </div>
+        <div class="toolbar">
+            <div class="toolbar-group filter-dropdowns" id="filterDropdowns">
+                <!-- Dynamic filter dropdowns will be inserted here -->
+            </div>
+            <span class="row-count" id="rowCount">0 rows</span>
         </div>
         <div class="versions-panel" id="versionsPanel">
             <div class="versions-header">
