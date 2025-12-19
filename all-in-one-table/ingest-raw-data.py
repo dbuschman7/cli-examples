@@ -22,6 +22,40 @@ class FileType(Enum):
     XLSX = "xlsx"
 
 
+def parse_fqdn(fqdn: str) -> tuple[str, str, str]:
+    """Parse a fully qualified domain name into its components.
+
+    Args:
+        fqdn: Fully qualified domain name (e.g., 'srv01.alpha.example.com')
+
+    Returns:
+        A tuple of (host, system, domain) where:
+        - host: The hostname (first part)
+        - system: The system/environment name (second part)
+        - domain: The remaining domain parts joined with dots
+    """
+    parts = fqdn.split(".") if fqdn else []
+
+    if len(parts) >= 3:
+        host = parts[0]
+        system = parts[1]
+        domain = ".".join(parts[2:])
+    elif len(parts) == 2:
+        host = parts[0]
+        system = ""
+        domain = parts[1]
+    elif len(parts) == 1:
+        host = parts[0]
+        system = ""
+        domain = ""
+    else:
+        host = ""
+        system = ""
+        domain = ""
+
+    return host, system, domain
+
+
 @dataclass
 class SystemRecord:
     """Represents a single record from a system CSV file."""
@@ -152,14 +186,20 @@ class SystemData:
             raise ValueError(f"Unsupported file type: {file_type}")
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Convert records to a pandas DataFrame with system_name column."""
+        """Convert records to a pandas DataFrame with system_name column and parsed FQDN parts."""
         data = []
         for record in self.records:
+            # Parse FQDN into components
+            fqdn_host, fqdn_system, fqdn_domain = parse_fqdn(record.fqdn)
+
             row = {
                 "system_name": self.system_name,
                 "date_generated": self.date_generated,
                 "hostname": record.hostname,
                 "fqdn": record.fqdn,
+                "fqdn_host": fqdn_host,
+                "fqdn_system": fqdn_system,
+                "fqdn_domain": fqdn_domain,
                 "ip_address": record.ip_address,
                 "cpu_usage": record.cpu_usage,
                 "memory_usage": record.memory_usage,
