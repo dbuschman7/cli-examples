@@ -314,12 +314,23 @@
             background-color: var(--bg-primary);
             border-radius: 4px;
         }
+
+        .page-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-emphasis);
+            margin: 0;
+            padding-right: 16px;
+            border-right: 2px solid var(--accent-1);
+            margin-right: 8px;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <div class="toolbar">
+            <h1 class="page-title" id="pageTitle"></h1>
             <div class="toolbar-group">
                 <label for="globalFilter">Search:</label>
                 <input type="text" id="globalFilter" placeholder="Filter all columns...">
@@ -352,137 +363,6 @@
 
     <script>
         // ==========================================
-        // CONFIGURATION - Edit these sections
-        // ==========================================
-
-        // Columns to display in the table (subset of all columns)
-        const displayColumns = ['id', 'name', 'status', 'category', 'priority', 'created'];
-
-        // Embedded JSON data - replace with your own data
-        const tableData = [
-            {
-                id: 1,
-                name: "Project Alpha",
-                status: "Active",
-                category: "Development",
-                priority: "High",
-                created: "2024-01-15",
-                description: "Main development project for Q1",
-                owner: "Alice Johnson",
-                budget: 50000,
-                tags: "frontend,backend,api"
-            },
-            {
-                id: 2,
-                name: "Database Migration",
-                status: "Pending",
-                category: "Infrastructure",
-                priority: "Critical",
-                created: "2024-01-20",
-                description: "Migrate legacy database to new cloud infrastructure",
-                owner: "Bob Smith",
-                budget: 75000,
-                tags: "database,cloud,migration"
-            },
-            {
-                id: 3,
-                name: "UI Redesign",
-                status: "Active",
-                category: "Design",
-                priority: "Medium",
-                created: "2024-02-01",
-                description: "Complete redesign of customer portal",
-                owner: "Carol Davis",
-                budget: 30000,
-                tags: "ui,ux,design"
-            },
-            {
-                id: 4,
-                name: "Security Audit",
-                status: "Completed",
-                category: "Security",
-                priority: "High",
-                created: "2024-02-10",
-                description: "Annual security audit and penetration testing",
-                owner: "David Wilson",
-                budget: 25000,
-                tags: "security,audit,compliance"
-            },
-            {
-                id: 5,
-                name: "Mobile App v2",
-                status: "Active",
-                category: "Development",
-                priority: "High",
-                created: "2024-02-15",
-                description: "Version 2 of the mobile application with new features",
-                owner: "Eve Martinez",
-                budget: 80000,
-                tags: "mobile,ios,android"
-            },
-            {
-                id: 6,
-                name: "API Gateway",
-                status: "Pending",
-                category: "Infrastructure",
-                priority: "Medium",
-                created: "2024-02-20",
-                description: "Implement centralized API gateway for microservices",
-                owner: "Frank Brown",
-                budget: 40000,
-                tags: "api,gateway,microservices"
-            },
-            {
-                id: 7,
-                name: "Documentation Update",
-                status: "Active",
-                category: "Documentation",
-                priority: "Low",
-                created: "2024-03-01",
-                description: "Update all technical documentation and guides",
-                owner: "Grace Lee",
-                budget: 10000,
-                tags: "docs,guides,wiki"
-            },
-            {
-                id: 8,
-                name: "Performance Optimization",
-                status: "Completed",
-                category: "Development",
-                priority: "Critical",
-                created: "2024-03-05",
-                description: "Optimize application performance and reduce load times",
-                owner: "Henry Taylor",
-                budget: 35000,
-                tags: "performance,optimization,speed"
-            },
-            {
-                id: 9,
-                name: "User Analytics",
-                status: "Active",
-                category: "Analytics",
-                priority: "Medium",
-                created: "2024-03-10",
-                description: "Implement comprehensive user analytics dashboard",
-                owner: "Ivy Chen",
-                budget: 45000,
-                tags: "analytics,dashboard,metrics"
-            },
-            {
-                id: 10,
-                name: "Cloud Migration Phase 2",
-                status: "Pending",
-                category: "Infrastructure",
-                priority: "High",
-                created: "2024-03-15",
-                description: "Second phase of cloud migration - production workloads",
-                owner: "Jack Anderson",
-                budget: 120000,
-                tags: "cloud,migration,aws"
-            }
-        ];
-
-        // ==========================================
         // APPLICATION CODE
         // ==========================================
 
@@ -493,6 +373,10 @@
 
         // Initialize the application
         function init() {
+            // Set page title
+            document.getElementById('pageTitle').textContent = pageTitle;
+            document.title = pageTitle;
+
             setupThemeToggle();
             analyzeColumnsForFilters();
             renderTable();
@@ -678,6 +562,140 @@
 
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', init);
+
+        // ==========================================
+        // CONFIGURATION - Edit these sections
+        // ==========================================
+
+        // Page title - displayed in toolbar and browser tab
+        const pageTitle = 'Data Table Viewer';
+
+        // Columns to display in the table (subset of all columns)
+        const displayColumns = ['id', 'name', 'status', 'category', 'priority', 'created'];
+
+        // Embedded JSON data - replace with your own data
+        const tableData = [
+            {
+                id: 1,
+                name: "Project Alpha",
+                status: "Active",
+                category: "Development",
+                priority: "High",
+                created: "2024-01-15",
+                description: "Main development project for Q1",
+                owner: "Alice Johnson",
+                budget: 50000,
+                tags: "frontend,backend,api"
+            },
+            {
+                id: 2,
+                name: "Database Migration",
+                status: "Pending",
+                category: "Infrastructure",
+                priority: "Critical",
+                created: "2024-01-20",
+                description: "Migrate legacy database to new cloud infrastructure",
+                owner: "Bob Smith",
+                budget: 75000,
+                tags: "database,cloud,migration"
+            },
+            {
+                id: 3,
+                name: "UI Redesign",
+                status: "Active",
+                category: "Design",
+                priority: "Medium",
+                created: "2024-02-01",
+                description: "Complete redesign of customer portal",
+                owner: "Carol Davis",
+                budget: 30000,
+                tags: "ui,ux,design"
+            },
+            {
+                id: 4,
+                name: "Security Audit",
+                status: "Completed",
+                category: "Security",
+                priority: "High",
+                created: "2024-02-10",
+                description: "Annual security audit and penetration testing",
+                owner: "David Wilson",
+                budget: 25000,
+                tags: "security,audit,compliance"
+            },
+            {
+                id: 5,
+                name: "Mobile App v2",
+                status: "Active",
+                category: "Development",
+                priority: "High",
+                created: "2024-02-15",
+                description: "Version 2 of the mobile application with new features",
+                owner: "Eve Martinez",
+                budget: 80000,
+                tags: "mobile,ios,android"
+            },
+            {
+                id: 6,
+                name: "API Gateway",
+                status: "Pending",
+                category: "Infrastructure",
+                priority: "Medium",
+                created: "2024-02-20",
+                description: "Implement centralized API gateway for microservices",
+                owner: "Frank Brown",
+                budget: 40000,
+                tags: "api,gateway,microservices"
+            },
+            {
+                id: 7,
+                name: "Documentation Update",
+                status: "Active",
+                category: "Documentation",
+                priority: "Low",
+                created: "2024-03-01",
+                description: "Update all technical documentation and guides",
+                owner: "Grace Lee",
+                budget: 10000,
+                tags: "docs,guides,wiki"
+            },
+            {
+                id: 8,
+                name: "Performance Optimization",
+                status: "Completed",
+                category: "Development",
+                priority: "Critical",
+                created: "2024-03-05",
+                description: "Optimize application performance and reduce load times",
+                owner: "Henry Taylor",
+                budget: 35000,
+                tags: "performance,optimization,speed"
+            },
+            {
+                id: 9,
+                name: "User Analytics",
+                status: "Active",
+                category: "Analytics",
+                priority: "Medium",
+                created: "2024-03-10",
+                description: "Implement comprehensive user analytics dashboard",
+                owner: "Ivy Chen",
+                budget: 45000,
+                tags: "analytics,dashboard,metrics"
+            },
+            {
+                id: 10,
+                name: "Cloud Migration Phase 2",
+                status: "Pending",
+                category: "Infrastructure",
+                priority: "High",
+                created: "2024-03-15",
+                description: "Second phase of cloud migration - production workloads",
+                owner: "Jack Anderson",
+                budget: 120000,
+                tags: "cloud,migration,aws"
+            }
+        ];
     </script>
 </body>
 
