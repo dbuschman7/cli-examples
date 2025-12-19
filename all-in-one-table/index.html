@@ -102,15 +102,13 @@
             gap: 12px;
         }
 
-        /* Toolbar */
-        .toolbar {
+        /* Row count bar */
+        .row-count-bar {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 6px 12px;
+            padding: 4px 12px;
             background-color: var(--bg-primary);
             border-bottom: 1px solid var(--border-color);
-            flex-wrap: wrap;
         }
 
         .toolbar-group {
@@ -232,6 +230,33 @@
             top: 0;
             z-index: 10;
             border-bottom: 2px solid var(--accent-1);
+            vertical-align: top;
+        }
+
+        th .header-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        th .header-label {
+            font-weight: 600;
+        }
+
+        th select {
+            padding: 2px 4px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 11px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        th select:focus {
+            outline: none;
+            border-color: var(--accent-1);
         }
 
         tr:hover {
@@ -361,30 +386,11 @@
             text-align: center;
         }
 
-        /* Filter dropdowns */
-        .filter-dropdowns {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .filter-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .filter-item label {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
         .row-count {
             font-size: 11px;
             color: var(--accent-2);
             padding: 4px 8px;
-            background-color: var(--bg-primary);
+            background-color: var(--bg-secondary);
             border-radius: 4px;
         }
 
@@ -519,10 +525,7 @@
                 </div>
             </div>
         </div>
-        <div class="toolbar">
-            <div class="toolbar-group filter-dropdowns" id="filterDropdowns">
-                <!-- Dynamic filter dropdowns will be inserted here -->
-            </div>
+        <div class="row-count-bar">
             <span class="row-count" id="rowCount">0 rows</span>
         </div>
         <div class="versions-panel" id="versionsPanel">
@@ -656,40 +659,12 @@
 
         // Analyze columns to determine which should have dropdown filters
         function analyzeColumnsForFilters() {
-            const filterContainer = document.getElementById('filterDropdowns');
-
-            // Only create filters for columns that are displayed in the table
+            // Build filter options for each displayed column
             displayColumns.forEach(column => {
                 const uniqueValues = [...new Set(tableData.map(row => row[column]))];
 
                 if (uniqueValues.length <= MAX_FILTER_VALUES && uniqueValues.length > 1) {
-                    columnFilters[column] = '';
-
-                    const filterItem = document.createElement('div');
-                    filterItem.className = 'filter-item';
-
-                    const label = document.createElement('label');
-                    label.textContent = column + ':';
-
-                    const select = document.createElement('select');
-                    select.id = `filter-${column}`;
-                    select.innerHTML = `<option value="">All</option>`;
-
-                    uniqueValues.sort().forEach(value => {
-                        const option = document.createElement('option');
-                        option.value = value;
-                        option.textContent = value;
-                        select.appendChild(option);
-                    });
-
-                    select.addEventListener('change', (e) => {
-                        columnFilters[column] = e.target.value;
-                        applyFilters();
-                    });
-
-                    filterItem.appendChild(label);
-                    filterItem.appendChild(select);
-                    filterContainer.appendChild(filterItem);
+                    columnFilters[column] = { value: '', options: uniqueValues.sort() };
                 }
             });
         }
@@ -699,11 +674,44 @@
             const headerRow = document.getElementById('tableHeader');
             const tbody = document.getElementById('tableBody');
 
-            // Render headers
+            // Render headers with integrated filters
             headerRow.innerHTML = '';
             displayColumns.forEach(col => {
                 const th = document.createElement('th');
-                th.textContent = col;
+
+                const headerContent = document.createElement('div');
+                headerContent.className = 'header-content';
+
+                const headerLabel = document.createElement('span');
+                headerLabel.className = 'header-label';
+                headerLabel.textContent = col;
+                headerContent.appendChild(headerLabel);
+
+                // Add filter dropdown if this column has filter options
+                if (columnFilters[col]) {
+                    const select = document.createElement('select');
+                    select.id = `filter-${col}`;
+                    select.innerHTML = `<option value="">All</option>`;
+
+                    columnFilters[col].options.forEach(value => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = value;
+                        if (columnFilters[col].value === String(value)) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+
+                    select.addEventListener('change', (e) => {
+                        columnFilters[col].value = e.target.value;
+                        applyFilters();
+                    });
+
+                    headerContent.appendChild(select);
+                }
+
+                th.appendChild(headerContent);
                 headerRow.appendChild(th);
             });
 
@@ -796,8 +804,8 @@
 
             filteredData = tableData.filter(row => {
                 // Check column-specific filters
-                for (const [column, filterValue] of Object.entries(columnFilters)) {
-                    if (filterValue && String(row[column]) !== filterValue) {
+                for (const [column, filterData] of Object.entries(columnFilters)) {
+                    if (filterData.value && String(row[column]) !== filterData.value) {
                         return false;
                     }
                 }
