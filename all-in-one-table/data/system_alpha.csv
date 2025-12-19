@@ -1,0 +1,6 @@
+hostname,fqdn,ip_address,cpu_usage,memory_usage,disk_usage,network_in,network_out,process_count,uptime_hours
+srv01,srv01.alpha.example.com,192.168.1.10,45.2,62.5,78.3,1024.5,512.3,142,720
+srv02,srv02.alpha.example.com,192.168.1.11,32.1,48.7,55.2,856.2,423.1,98,1440
+srv03,srv03.alpha.example.com,192.168.1.12,78.9,85.2,92.1,2048.7,1024.5,256,168
+srv04,srv04.alpha.example.com,192.168.1.13,12.5,35.8,42.6,512.3,256.1,67,2160
+srv05,srv05.alpha.example.com,192.168.1.14,55.7,71.3,68.9,1536.8,768.4,189,504

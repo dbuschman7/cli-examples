@@ -1,0 +1,6 @@
+hostname,fqdn,ip_address,cpu_usage,memory_usage,disk_usage,network_in,network_out,process_count,uptime_hours
+web01,web01.beta.corp.net,10.0.2.20,67.3,54.2,45.8,4096.2,2048.1,312,336
+web02,web02.beta.corp.net,10.0.2.21,42.8,61.5,52.3,3584.7,1792.3,287,672
+db01,db01.beta.corp.net,10.0.2.30,88.5,92.1,87.6,8192.4,4096.2,89,1008
+cache01,cache01.beta.corp.net,10.0.2.40,25.6,78.9,32.1,2048.9,1024.4,45,2016
+api01,api01.beta.corp.net,10.0.2.50,71.2,66.8,58.4,5120.3,2560.1,198,168
