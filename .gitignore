@@ -1,3 +1,4 @@
 collect-from-hosts/__pycache__/collect-from-hosts.cpython-313.pyc
 collect-from-hosts/test-hosts.txt
 collect-from-hosts/test-queue.txt
+.DS_Store
