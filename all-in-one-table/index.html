@@ -324,6 +324,113 @@
             border-right: 2px solid var(--accent-1);
             margin-right: 8px;
         }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .generation-date {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .versions-btn {
+            padding: 4px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .versions-btn:hover {
+            background-color: var(--accent-4);
+            color: var(--text-emphasis);
+            border-color: var(--accent-4);
+        }
+
+        .versions-panel {
+            display: none;
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            background-color: var(--bg-secondary);
+            border: 2px solid var(--accent-4);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            min-width: 350px;
+            max-height: 300px;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        .versions-panel.visible {
+            display: flex;
+        }
+
+        .versions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: var(--bg-highlight);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .versions-header h3 {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-emphasis);
+        }
+
+        .versions-close {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 4px;
+        }
+
+        .versions-close:hover {
+            color: var(--accent-5);
+        }
+
+        .versions-content {
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .versions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .versions-table th,
+        .versions-table td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .versions-table th {
+            background-color: var(--bg-highlight);
+            color: var(--text-emphasis);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .versions-table tr:hover {
+            background-color: var(--row-hover);
+        }
     </style>
 </head>
 
@@ -339,8 +446,29 @@
                 <!-- Dynamic filter dropdowns will be inserted here -->
             </div>
             <span class="row-count" id="rowCount">0 rows</span>
-            <div class="theme-toggle">
-                <button id="themeToggle">🌙 Dark</button>
+            <div class="toolbar-right">
+                <div class="theme-toggle">
+                    <button id="themeToggle">🌙 Dark</button>
+                </div>
+                <button class="versions-btn" id="versionsBtn">📋 Versions</button>
+                <span class="generation-date" id="generationDate"></span>
+            </div>
+        </div>
+        <div class="versions-panel" id="versionsPanel">
+            <div class="versions-header">
+                <h3>Data Versions</h3>
+                <button class="versions-close" id="versionsClose">✕</button>
+            </div>
+            <div class="versions-content">
+                <table class="versions-table">
+                    <thead>
+                        <tr>
+                            <th>Data Source</th>
+                            <th>Date Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="versionsBody"></tbody>
+                </table>
             </div>
         </div>
         <div class="main-content">
@@ -380,11 +508,55 @@
             document.getElementById('pageTitle').textContent = pageTitle;
             document.title = pageTitle;
 
+            // Set generation date
+            document.getElementById('generationDate').textContent = generationDateTime;
+
+            // Populate versions table
+            populateVersionsTable();
+
             setupThemeToggle();
+            setupVersionsPanel();
             analyzeColumnsForFilters();
             renderTable();
             setupEventListeners();
             updateRowCount();
+        }
+
+        // Setup versions panel toggle
+        function setupVersionsPanel() {
+            const versionsBtn = document.getElementById('versionsBtn');
+            const versionsPanel = document.getElementById('versionsPanel');
+            const versionsClose = document.getElementById('versionsClose');
+
+            versionsBtn.addEventListener('click', () => {
+                versionsPanel.classList.toggle('visible');
+            });
+
+            versionsClose.addEventListener('click', () => {
+                versionsPanel.classList.remove('visible');
+            });
+
+            // Close panel when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!versionsPanel.contains(e.target) && !versionsBtn.contains(e.target)) {
+                    versionsPanel.classList.remove('visible');
+                }
+            });
+        }
+
+        // Populate versions table from configuration
+        function populateVersionsTable() {
+            const tbody = document.getElementById('versionsBody');
+            tbody.innerHTML = '';
+
+            versionsData.forEach(version => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${version.dataSource}</td>
+                    <td>${version.dateTime}</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         // Theme toggle functionality
@@ -698,6 +870,16 @@
                 budget: 120000,
                 tags: "cloud,migration,aws"
             }
+        ];
+
+        // Generation date/time displayed in upper right
+        const generationDateTime = '2024-12-18 10:30:00';
+
+        // Versions data - displayed in versions panel
+        const versionsData = [
+            { dataSource: 'Main Database', dateTime: '2024-12-18 10:00:00' },
+            { dataSource: 'Analytics API', dateTime: '2024-12-18 09:45:00' },
+            { dataSource: 'User Service', dateTime: '2024-12-17 23:30:00' }
         ];
 
     </script>
