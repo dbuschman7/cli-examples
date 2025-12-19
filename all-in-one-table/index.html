@@ -366,13 +366,16 @@
         // APPLICATION CODE
         // ==========================================
 
-        let filteredData = [...tableData];
+        let filteredData = [];
         let selectedRowIndex = null;
         let columnFilters = {};
         const MAX_FILTER_VALUES = 100;
 
         // Initialize the application
         function init() {
+            // Initialize data
+            filteredData = [...tableData];
+
             // Set page title
             document.getElementById('pageTitle').textContent = pageTitle;
             document.title = pageTitle;
@@ -696,6 +699,7 @@
                 tags: "cloud,migration,aws"
             }
         ];
+
     </script>
 </body>
 
