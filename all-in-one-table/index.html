@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Table Viewer</title>
+    <style>
+        :root {
+            /* Light theme - Solarized Light inspired */
+            --bg-primary: #fdf6e3;
+            --bg-secondary: #eee8d5;
+            --bg-highlight: #93a1a1;
+            --text-primary: #657b83;
+            --text-secondary: #586e75;
+            --text-emphasis: #073642;
+            --accent-1: #268bd2;
+            --accent-2: #2aa198;
+            --accent-3: #859900;
+            --accent-4: #b58900;
+            --accent-5: #cb4b16;
+            --accent-6: #d33682;
+            --border-color: #93a1a1;
+            --row-hover: #eee8d5;
+            --row-selected: #d6d0c4;
+            --input-bg: #fdf6e3;
+            --scrollbar-bg: #eee8d5;
+            --scrollbar-thumb: #93a1a1;
+        }
+
+        [data-theme="dark"] {
+            /* Dark theme - Solarized Dark inspired */
+            --bg-primary: #002b36;
+            --bg-secondary: #073642;
+            --bg-highlight: #586e75;
+            --text-primary: #839496;
+            --text-secondary: #93a1a1;
+            --text-emphasis: #fdf6e3;
+            --accent-1: #268bd2;
+            --accent-2: #2aa198;
+            --accent-3: #859900;
+            --accent-4: #b58900;
+            --accent-5: #cb4b16;
+            --accent-6: #d33682;
+            --border-color: #586e75;
+            --row-hover: #073642;
+            --row-selected: #0a4555;
+            --input-bg: #073642;
+            --scrollbar-bg: #073642;
+            --scrollbar-thumb: #586e75;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 13px;
+            line-height: 1.3;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header / Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toolbar label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .toolbar input[type="text"] {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 12px;
+            width: 180px;
+        }
+
+        .toolbar input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-1);
+            box-shadow: 0 0 0 2px rgba(38, 139, 210, 0.2);
+        }
+
+        .toolbar select {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 12px;
+            max-width: 150px;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .theme-toggle button {
+            padding: 4px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle button:hover {
+            background-color: var(--accent-1);
+            color: var(--text-emphasis);
+            border-color: var(--accent-1);
+        }
+
+        /* Main content area */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Table panel */
+        .table-panel {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+        }
+
+        .table-panel::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .table-panel::-webkit-scrollbar-track {
+            background: var(--scrollbar-bg);
+        }
+
+        .table-panel::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th,
+        td {
+            padding: 4px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+        }
+
+        th {
+            background-color: var(--bg-secondary);
+            color: var(--text-emphasis);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid var(--accent-1);
+        }
+
+        tr:hover {
+            background-color: var(--row-hover);
+        }
+
+        tr.selected {
+            background-color: var(--row-selected);
+        }
+
+        tr {
+            cursor: pointer;
+        }
+
+        /* Alternating row colors */
+        tbody tr:nth-child(even) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        [data-theme="dark"] tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Detail panel */
+        .detail-panel {
+            width: 320px;
+            min-width: 280px;
+            background-color: var(--bg-secondary);
+            border-left: 2px solid var(--accent-2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-header {
+            padding: 8px 12px;
+            background-color: var(--bg-highlight);
+            color: var(--text-emphasis);
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .detail-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .detail-content::-webkit-scrollbar-track {
+            background: var(--scrollbar-bg);
+        }
+
+        .detail-content::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 3px;
+        }
+
+        .detail-row {
+            display: flex;
+            flex-direction: column;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--accent-1);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            word-wrap: break-word;
+            font-size: 12px;
+        }
+
+        .detail-empty {
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Filter dropdowns */
+        .filter-dropdowns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .filter-item label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .row-count {
+            font-size: 11px;
+            color: var(--accent-2);
+            padding: 4px 8px;
+            background-color: var(--bg-primary);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label for="globalFilter">Search:</label>
+                <input type="text" id="globalFilter" placeholder="Filter all columns...">
+            </div>
+            <div class="toolbar-group filter-dropdowns" id="filterDropdowns">
+                <!-- Dynamic filter dropdowns will be inserted here -->
+            </div>
+            <span class="row-count" id="rowCount">0 rows</span>
+            <div class="theme-toggle">
+                <button id="themeToggle">🌙 Dark</button>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="table-panel">
+                <table id="dataTable">
+                    <thead>
+                        <tr id="tableHeader"></tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="detail-panel">
+                <div class="detail-header">Row Details</div>
+                <div class="detail-content" id="detailContent">
+                    <div class="detail-empty">Select a row to view details</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION - Edit these sections
+        // ==========================================
+
+        // Columns to display in the table (subset of all columns)
+        const displayColumns = ['id', 'name', 'status', 'category', 'priority', 'created'];
+
+        // Embedded JSON data - replace with your own data
+        const tableData = [
+            {
+                id: 1,
+                name: "Project Alpha",
+                status: "Active",
+                category: "Development",
+                priority: "High",
+                created: "2024-01-15",
+                description: "Main development project for Q1",
+                owner: "Alice Johnson",
+                budget: 50000,
+                tags: "frontend,backend,api"
+            },
+            {
+                id: 2,
+                name: "Database Migration",
+                status: "Pending",
+                category: "Infrastructure",
+                priority: "Critical",
+                created: "2024-01-20",
+                description: "Migrate legacy database to new cloud infrastructure",
+                owner: "Bob Smith",
+                budget: 75000,
+                tags: "database,cloud,migration"
+            },
+            {
+                id: 3,
+                name: "UI Redesign",
+                status: "Active",
+                category: "Design",
+                priority: "Medium",
+                created: "2024-02-01",
+                description: "Complete redesign of customer portal",
+                owner: "Carol Davis",
+                budget: 30000,
+                tags: "ui,ux,design"
+            },
+            {
+                id: 4,
+                name: "Security Audit",
+                status: "Completed",
+                category: "Security",
+                priority: "High",
+                created: "2024-02-10",
+                description: "Annual security audit and penetration testing",
+                owner: "David Wilson",
+                budget: 25000,
+                tags: "security,audit,compliance"
+            },
+            {
+                id: 5,
+                name: "Mobile App v2",
+                status: "Active",
+                category: "Development",
+                priority: "High",
+                created: "2024-02-15",
+                description: "Version 2 of the mobile application with new features",
+                owner: "Eve Martinez",
+                budget: 80000,
+                tags: "mobile,ios,android"
+            },
+            {
+                id: 6,
+                name: "API Gateway",
+                status: "Pending",
+                category: "Infrastructure",
+                priority: "Medium",
+                created: "2024-02-20",
+                description: "Implement centralized API gateway for microservices",
+                owner: "Frank Brown",
+                budget: 40000,
+                tags: "api,gateway,microservices"
+            },
+            {
+                id: 7,
+                name: "Documentation Update",
+                status: "Active",
+                category: "Documentation",
+                priority: "Low",
+                created: "2024-03-01",
+                description: "Update all technical documentation and guides",
+                owner: "Grace Lee",
+                budget: 10000,
+                tags: "docs,guides,wiki"
+            },
+            {
+                id: 8,
+                name: "Performance Optimization",
+                status: "Completed",
+                category: "Development",
+                priority: "Critical",
+                created: "2024-03-05",
+                description: "Optimize application performance and reduce load times",
+                owner: "Henry Taylor",
+                budget: 35000,
+                tags: "performance,optimization,speed"
+            },
+            {
+                id: 9,
+                name: "User Analytics",
+                status: "Active",
+                category: "Analytics",
+                priority: "Medium",
+                created: "2024-03-10",
+                description: "Implement comprehensive user analytics dashboard",
+                owner: "Ivy Chen",
+                budget: 45000,
+                tags: "analytics,dashboard,metrics"
+            },
+            {
+                id: 10,
+                name: "Cloud Migration Phase 2",
+                status: "Pending",
+                category: "Infrastructure",
+                priority: "High",
+                created: "2024-03-15",
+                description: "Second phase of cloud migration - production workloads",
+                owner: "Jack Anderson",
+                budget: 120000,
+                tags: "cloud,migration,aws"
+            }
+        ];
+
+        // ==========================================
+        // APPLICATION CODE
+        // ==========================================
+
+        let filteredData = [...tableData];
+        let selectedRowIndex = null;
+        let columnFilters = {};
+        const MAX_FILTER_VALUES = 100;
+
+        // Initialize the application
+        function init() {
+            setupThemeToggle();
+            analyzeColumnsForFilters();
+            renderTable();
+            setupEventListeners();
+            updateRowCount();
+        }
+
+        // Theme toggle functionality
+        function setupThemeToggle() {
+            const themeToggle = document.getElementById('themeToggle');
+            const savedTheme = localStorage.getItem('theme') || 'light';
+
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️ Light';
+            }
+
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                if (currentTheme === 'dark') {
+                    document.documentElement.removeAttribute('data-theme');
+                    themeToggle.textContent = '🌙 Dark';
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    themeToggle.textContent = '☀️ Light';
+                    localStorage.setItem('theme', 'dark');
+                }
+            });
+        }
+
+        // Analyze columns to determine which should have dropdown filters
+        function analyzeColumnsForFilters() {
+            const filterContainer = document.getElementById('filterDropdowns');
+            const allColumns = tableData.length > 0 ? Object.keys(tableData[0]) : [];
+
+            allColumns.forEach(column => {
+                const uniqueValues = [...new Set(tableData.map(row => row[column]))];
+
+                if (uniqueValues.length <= MAX_FILTER_VALUES && uniqueValues.length > 1) {
+                    columnFilters[column] = '';
+
+                    const filterItem = document.createElement('div');
+                    filterItem.className = 'filter-item';
+
+                    const label = document.createElement('label');
+                    label.textContent = column + ':';
+
+                    const select = document.createElement('select');
+                    select.id = `filter-${column}`;
+                    select.innerHTML = `<option value="">All</option>`;
+
+                    uniqueValues.sort().forEach(value => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = value;
+                        select.appendChild(option);
+                    });
+
+                    select.addEventListener('change', (e) => {
+                        columnFilters[column] = e.target.value;
+                        applyFilters();
+                    });
+
+                    filterItem.appendChild(label);
+                    filterItem.appendChild(select);
+                    filterContainer.appendChild(filterItem);
+                }
+            });
+        }
+
+        // Render the table
+        function renderTable() {
+            const headerRow = document.getElementById('tableHeader');
+            const tbody = document.getElementById('tableBody');
+
+            // Render headers
+            headerRow.innerHTML = '';
+            displayColumns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+
+            // Render body
+            tbody.innerHTML = '';
+            filteredData.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.dataset.index = index;
+
+                displayColumns.forEach(col => {
+                    const td = document.createElement('td');
+                    td.textContent = row[col] !== undefined ? row[col] : '';
+                    td.title = row[col] !== undefined ? row[col] : '';
+                    tr.appendChild(td);
+                });
+
+                tr.addEventListener('click', () => selectRow(index, tr));
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Select a row and show details
+        function selectRow(index, trElement) {
+            // Remove previous selection
+            const prevSelected = document.querySelector('tr.selected');
+            if (prevSelected) {
+                prevSelected.classList.remove('selected');
+            }
+
+            // Add selection to current row
+            trElement.classList.add('selected');
+            selectedRowIndex = index;
+
+            // Show details
+            showDetails(filteredData[index]);
+        }
+
+        // Show row details in the detail panel
+        function showDetails(rowData) {
+            const detailContent = document.getElementById('detailContent');
+
+            if (!rowData) {
+                detailContent.innerHTML = '<div class="detail-empty">Select a row to view details</div>';
+                return;
+            }
+
+            let html = '';
+            Object.keys(rowData).forEach(key => {
+                html += `
+                    <div class="detail-row">
+                        <div class="detail-label">${key}</div>
+                        <div class="detail-value">${rowData[key] !== undefined && rowData[key] !== '' ? rowData[key] : '—'}</div>
+                    </div>
+                `;
+            });
+
+            detailContent.innerHTML = html;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            const globalFilter = document.getElementById('globalFilter');
+            globalFilter.addEventListener('input', applyFilters);
+        }
+
+        // Apply all filters
+        function applyFilters() {
+            const globalFilterValue = document.getElementById('globalFilter').value.toLowerCase();
+
+            filteredData = tableData.filter(row => {
+                // Check column-specific filters
+                for (const [column, filterValue] of Object.entries(columnFilters)) {
+                    if (filterValue && String(row[column]) !== filterValue) {
+                        return false;
+                    }
+                }
+
+                // Check global text filter
+                if (globalFilterValue) {
+                    const rowText = Object.values(row).join(' ').toLowerCase();
+                    if (!rowText.includes(globalFilterValue)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            renderTable();
+            updateRowCount();
+
+            // Clear selection if selected row is no longer visible
+            selectedRowIndex = null;
+            document.getElementById('detailContent').innerHTML = '<div class="detail-empty">Select a row to view details</div>';
+        }
+
+        // Update row count display
+        function updateRowCount() {
+            const rowCount = document.getElementById('rowCount');
+            rowCount.textContent = `${filteredData.length} of ${tableData.length} rows`;
+        }
+
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
