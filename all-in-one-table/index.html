@@ -296,7 +296,7 @@
         .detail-row {
             display: flex;
             flex-direction: column;
-            padding: 4px 0;
+            padding: 6px 0;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -306,13 +306,52 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .detail-label::before {
+            content: '▶';
+            font-size: 8px;
+            transition: transform 0.2s;
+        }
+
+        .detail-row.expanded .detail-label::before {
+            transform: rotate(90deg);
         }
 
         .detail-value {
             color: var(--text-primary);
-            word-wrap: break-word;
             font-size: 12px;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-height: 1.4em;
+            transition: max-height 0.3s ease;
+        }
+
+        .detail-row.expanded .detail-value {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: visible;
+            max-height: none;
+        }
+
+        .detail-value.truncated {
+            cursor: pointer;
+        }
+
+        .detail-value.truncated::after {
+            content: ' ...';
+            color: var(--accent-2);
+        }
+
+        .detail-row.expanded .detail-value.truncated::after {
+            content: '';
         }
 
         .detail-empty {
@@ -711,17 +750,38 @@
                 return;
             }
 
-            let html = '';
-            Object.keys(rowData).forEach(key => {
-                html += `
-                    <div class="detail-row">
-                        <div class="detail-label">${key}</div>
-                        <div class="detail-value">${rowData[key] !== undefined && rowData[key] !== '' ? rowData[key] : '—'}</div>
-                    </div>
-                `;
-            });
+            // Clear existing content
+            detailContent.innerHTML = '';
 
-            detailContent.innerHTML = html;
+            Object.keys(rowData).forEach(key => {
+                const value = rowData[key] !== undefined && rowData[key] !== '' ? rowData[key] : '—';
+                const valueStr = String(value);
+                const isLongText = valueStr.length > 50 || valueStr.includes('\n');
+
+                const detailRow = document.createElement('div');
+                detailRow.className = 'detail-row';
+
+                const detailLabel = document.createElement('div');
+                detailLabel.className = 'detail-label';
+                detailLabel.textContent = key;
+
+                const detailValue = document.createElement('div');
+                detailValue.className = 'detail-value';
+                detailValue.textContent = valueStr;
+
+                if (isLongText) {
+                    detailValue.classList.add('truncated');
+                }
+
+                // Click handler to expand/collapse
+                detailRow.addEventListener('click', () => {
+                    detailRow.classList.toggle('expanded');
+                });
+
+                detailRow.appendChild(detailLabel);
+                detailRow.appendChild(detailValue);
+                detailContent.appendChild(detailRow);
+            });
         }
 
         // Setup event listeners
