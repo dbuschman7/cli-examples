@@ -222,6 +222,7 @@
             z-index: 10;
             border-bottom: 2px solid var(--accent-1);
             vertical-align: top;
+            overflow: visible;
         }
 
         th .header-content {
@@ -247,6 +248,113 @@
 
         th select:focus {
             outline: none;
+            border-color: var(--accent-1);
+        }
+
+        /* Multi-select dropdown styles */
+        .multi-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .multi-select-btn {
+            padding: 2px 4px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 11px;
+            width: 100%;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .multi-select-btn:hover {
+            border-color: var(--accent-1);
+        }
+
+        .multi-select-btn .selected-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .multi-select-btn .arrow {
+            font-size: 8px;
+            color: var(--text-secondary);
+        }
+
+        .multi-select-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            min-width: 150px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+
+        .multi-select-dropdown.open {
+            display: block;
+        }
+
+        .multi-select-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .multi-select-item:hover {
+            background-color: var(--row-hover);
+        }
+
+        .multi-select-item input[type="checkbox"] {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+
+        .multi-select-item label {
+            cursor: pointer;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .multi-select-actions {
+            display: flex;
+            gap: 4px;
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-secondary);
+        }
+
+        .multi-select-actions button {
+            padding: 2px 6px;
+            font-size: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .multi-select-actions button:hover {
+            background-color: var(--accent-1);
+            color: var(--text-emphasis);
             border-color: var(--accent-1);
         }
 
@@ -650,21 +758,178 @@
         function analyzeColumnsForFilters() {
             // Build filter options for each displayed column
             displayColumns.forEach(column => {
-                const uniqueValues = [...new Set(tableData.map(row => row[column]))];
+                const uniqueValues = [...new Set(tableData.map(row => row[column]))].filter(v => v !== undefined && v !== null);
 
                 if (uniqueValues.length <= MAX_FILTER_VALUES && uniqueValues.length > 1) {
-                    columnFilters[column] = { value: '', options: uniqueValues.sort() };
+                    // Initialize with all values selected
+                    columnFilters[column] = { values: uniqueValues.map(String), options: uniqueValues.sort() };
                 }
             });
         }
 
+        // Sanitize string for use in element IDs
+        function sanitizeId(str) {
+            return String(str).replace(/[^a-zA-Z0-9]/g, '_');
+        }
+
+        // Create multi-select dropdown
+        function createMultiSelect(column, filterData) {
+            const colId = sanitizeId(column);
+            const container = document.createElement('div');
+            container.className = 'multi-select';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'multi-select-btn';
+            btn.id = `filter-btn-${colId}`;
+
+            const selectedText = document.createElement('span');
+            selectedText.className = 'selected-text';
+            selectedText.textContent = 'All';
+
+            const arrow = document.createElement('span');
+            arrow.className = 'arrow';
+            arrow.textContent = '▼';
+
+            btn.appendChild(selectedText);
+            btn.appendChild(arrow);
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'multi-select-dropdown';
+            dropdown.id = `filter-dropdown-${colId}`;
+
+            // Actions bar
+            const actions = document.createElement('div');
+            actions.className = 'multi-select-actions';
+
+            const selectAllBtn = document.createElement('button');
+            selectAllBtn.type = 'button';
+            selectAllBtn.textContent = 'All';
+            selectAllBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                filterData.values = [...filterData.options].map(String);
+                updateCheckboxes(column, filterData);
+                updateButtonText(column, filterData);
+                applyFilters();
+            });
+
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.textContent = 'Clear';
+            clearBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                filterData.values = [];
+                updateCheckboxes(column, filterData);
+                updateButtonText(column, filterData);
+                applyFilters();
+            });
+
+            actions.appendChild(selectAllBtn);
+            actions.appendChild(clearBtn);
+            dropdown.appendChild(actions);
+
+            // Checkbox items
+            filterData.options.forEach((value, idx) => {
+                const item = document.createElement('div');
+                item.className = 'multi-select-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `filter-${colId}-${idx}`;
+                checkbox.dataset.value = value;
+                checkbox.checked = filterData.values.includes(String(value));
+
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const val = String(value);
+                    if (checkbox.checked) {
+                        if (!filterData.values.includes(val)) {
+                            filterData.values.push(val);
+                        }
+                    } else {
+                        filterData.values = filterData.values.filter(v => v !== val);
+                    }
+                    updateButtonText(column, filterData);
+                    applyFilters();
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `filter-${colId}-${idx}`;
+                label.textContent = value;
+                label.title = value;
+
+                item.appendChild(checkbox);
+                item.appendChild(label);
+                dropdown.appendChild(item);
+            });
+
+            // Toggle dropdown
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close other dropdowns
+                document.querySelectorAll('.multi-select-dropdown.open').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('open');
+                });
+                dropdown.classList.toggle('open');
+            });
+
+            container.appendChild(btn);
+            container.appendChild(dropdown);
+
+            return container;
+        }
+
+        // Update checkbox states
+        function updateCheckboxes(column, filterData) {
+            const colId = sanitizeId(column);
+            filterData.options.forEach((value, idx) => {
+                const checkbox = document.getElementById(`filter-${colId}-${idx}`);
+                if (checkbox) {
+                    checkbox.checked = filterData.values.includes(String(value));
+                }
+            });
+        }
+
+        // Update button text to show selected count
+        function updateButtonText(column, filterData) {
+            const colId = sanitizeId(column);
+            const btn = document.getElementById(`filter-btn-${colId}`);
+            if (btn) {
+                const selectedText = btn.querySelector('.selected-text');
+                if (filterData.values.length === 0) {
+                    selectedText.textContent = 'None';
+                } else if (filterData.values.length === filterData.options.length) {
+                    selectedText.textContent = 'All';
+                } else if (filterData.values.length === 1) {
+                    selectedText.textContent = filterData.values[0];
+                } else {
+                    selectedText.textContent = `${filterData.values.length} selected`;
+                }
+            }
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.multi-select')) {
+                document.querySelectorAll('.multi-select-dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                });
+            }
+        });
+
         // Render the table
         function renderTable() {
-            const headerRow = document.getElementById('tableHeader');
-            const tbody = document.getElementById('tableBody');
+            renderTableHeader();
+            renderTableBody();
+        }
 
-            // Render headers with integrated filters
-            headerRow.innerHTML = '';
+        // Render table header (only once, not on filter changes)
+        function renderTableHeader() {
+            const headerRow = document.getElementById('tableHeader');
+
+            // Only render headers if empty
+            if (headerRow.children.length > 0) return;
+
             displayColumns.forEach(col => {
                 const th = document.createElement('th');
 
@@ -678,33 +943,19 @@
 
                 // Add filter dropdown if this column has filter options
                 if (columnFilters[col]) {
-                    const select = document.createElement('select');
-                    select.id = `filter-${col}`;
-                    select.innerHTML = `<option value="">All</option>`;
-
-                    columnFilters[col].options.forEach(value => {
-                        const option = document.createElement('option');
-                        option.value = value;
-                        option.textContent = value;
-                        if (columnFilters[col].value === String(value)) {
-                            option.selected = true;
-                        }
-                        select.appendChild(option);
-                    });
-
-                    select.addEventListener('change', (e) => {
-                        columnFilters[col].value = e.target.value;
-                        applyFilters();
-                    });
-
-                    headerContent.appendChild(select);
+                    const multiSelect = createMultiSelect(col, columnFilters[col]);
+                    headerContent.appendChild(multiSelect);
                 }
 
                 th.appendChild(headerContent);
                 headerRow.appendChild(th);
             });
+        }
 
-            // Render body
+        // Render table body (on every filter change)
+        function renderTableBody() {
+            const tbody = document.getElementById('tableBody');
+
             tbody.innerHTML = '';
             filteredData.forEach((row, index) => {
                 const tr = document.createElement('tr');
@@ -792,10 +1043,17 @@
             const globalFilterValue = document.getElementById('globalFilter').value.toLowerCase();
 
             filteredData = tableData.filter(row => {
-                // Check column-specific filters
+                // Check column-specific filters (multi-select)
                 for (const [column, filterData] of Object.entries(columnFilters)) {
-                    if (filterData.value && String(row[column]) !== filterData.value) {
+                    // If no values selected, filter out all rows for this column
+                    if (filterData.values.length === 0) {
                         return false;
+                    }
+                    // If not all options selected, check if row value is in selected values
+                    if (filterData.values.length < filterData.options.length) {
+                        if (!filterData.values.includes(String(row[column]))) {
+                            return false;
+                        }
                     }
                 }
 
