@@ -807,6 +807,7 @@
             selectAllBtn.textContent = 'All';
             selectAllBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // Always select from full dataset options
                 filterData.values = [...filterData.options].map(String);
                 updateCheckboxes(column, filterData);
                 updateButtonText(column, filterData);
@@ -818,6 +819,7 @@
             clearBtn.textContent = 'Clear';
             clearBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // Clear always applies to full dataset
                 filterData.values = [];
                 updateCheckboxes(column, filterData);
                 updateButtonText(column, filterData);
@@ -870,7 +872,13 @@
                 document.querySelectorAll('.multi-select-dropdown.open').forEach(d => {
                     if (d !== dropdown) d.classList.remove('open');
                 });
+                const isOpening = !dropdown.classList.contains('open');
                 dropdown.classList.toggle('open');
+
+                // Update dropdown options when opening
+                if (isOpening) {
+                    updateDropdownOptions(column, column);
+                }
             });
 
             container.appendChild(btn);
@@ -906,6 +914,75 @@
                     selectedText.textContent = `${filterData.values.length} selected`;
                 }
             }
+        }
+
+        // Update dropdown options based on visible data
+        function updateDropdownOptions(column, excludeColumn = null) {
+            const filterData = columnFilters[column];
+            if (!filterData) return;
+
+            // Get unique values from currently filtered data (excluding this column's filter)
+            let dataToAnalyze;
+            if (excludeColumn === column) {
+                // When updating this column, temporarily ignore its filter
+                dataToAnalyze = tableData.filter(row => {
+                    const globalFilterValue = document.getElementById('globalFilter').value.toLowerCase();
+
+                    // Check other column filters
+                    for (const [col, fData] of Object.entries(columnFilters)) {
+                        if (col === column) continue; // Skip this column
+
+                        if (fData.values.length === 0) {
+                            return false;
+                        }
+                        if (fData.values.length < fData.options.length) {
+                            if (!fData.values.includes(String(row[col]))) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    // Check global text filter
+                    if (globalFilterValue) {
+                        const rowText = Object.values(row).join(' ').toLowerCase();
+                        if (!rowText.includes(globalFilterValue)) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
+            } else {
+                dataToAnalyze = filteredData;
+            }
+
+            const visibleValues = new Set(dataToAnalyze.map(row => String(row[column])).filter(v => v !== 'undefined' && v !== 'null'));
+
+            const colId = sanitizeId(column);
+            const dropdown = document.getElementById(`filter-dropdown-${colId}`);
+            if (!dropdown) return;
+
+            // Get all items except the actions bar
+            const items = dropdown.querySelectorAll('.multi-select-item');
+
+            items.forEach((item) => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                const value = String(checkbox.dataset.value);
+
+                // Show/hide based on whether value exists in visible data
+                if (visibleValues.has(value)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Update all dropdown options based on visible data
+        function updateAllDropdownOptions() {
+            Object.keys(columnFilters).forEach(column => {
+                updateDropdownOptions(column, column);
+            });
         }
 
         // Close dropdowns when clicking outside
@@ -1070,6 +1147,9 @@
 
             renderTable();
             updateRowCount();
+
+            // Update dropdown options based on new filtered data
+            updateAllDropdownOptions();
 
             // Clear selection if selected row is no longer visible
             selectedRowIndex = null;
