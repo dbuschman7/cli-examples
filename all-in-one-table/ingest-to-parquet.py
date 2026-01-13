@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""
+Ingest raw CSV and XLSX data from multiple systems into a unified parquet file.
+Uses dataclasses to represent system data with metadata.
+"""
+
+import argparse
+import csv
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+import re
+from typing import List, Optional
+
+import pandas as pd
+from openpyxl import load_workbook
+
+
+class FileType(Enum):
+    """Supported file types for data ingestion."""
+
+    CSV = "csv"
+    XLSX = "xlsx"
+
+
+def parse_fqdn(fqdn: str) -> tuple[str, str, str]:
+    """Parse a fully qualified domain name into its components.
+
+    Args:
+        fqdn: Fully qualified domain name (e.g., 'srv01.alpha.example.com')
+
+    Returns:
+        A tuple of (host, system, domain) where:
+        - host: The hostname (first part)
+        - system: The system/environment name (second part)
+        - domain: The remaining domain parts joined with dots
+    """
+    parts = fqdn.split(".") if fqdn else []
+
+    if len(parts) >= 3:
+        host = parts[0]
+        system = parts[1]
+        domain = ".".join(parts[2:])
+    elif len(parts) == 2:
+        host = parts[0]
+        system = ""
+        domain = parts[1]
+    elif len(parts) == 1:
+        host = parts[0]
+        system = ""
+        domain = ""
+    else:
+        host = ""
+        system = ""
+        domain = ""
+
+    return host, system, domain
+
+
+@dataclass
+class SystemRecord:
+    """Represents a single record from a system CSV file."""
+
+    hostname: str
+    fqdn: str
+    ip_address: str
+    cpu_usage: float
+    memory_usage: float
+    disk_usage: float
+    network_in: float
+    network_out: float
+    process_count: int
+    uptime_hours: int
+
+
+@dataclass
+class SystemData:
+    """Container for system data with metadata."""
+
+    system_name: str
+    date_generated: datetime
+    records: List[SystemRecord] = field(default_factory=list)
+
+    @classmethod
+    def from_csv(cls, filepath: Path, system_name: str) -> "SystemData":
+        """Load system data from a CSV file."""
+        records = []
+        with open(filepath, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                record = SystemRecord(
+                    hostname=row["hostname"],
+                    fqdn=row["fqdn"],
+                    ip_address=row["ip_address"],
+                    cpu_usage=float(row["cpu_usage"]),
+                    memory_usage=float(row["memory_usage"]),
+                    disk_usage=float(row["disk_usage"]),
+                    network_in=float(row["network_in"]),
+                    network_out=float(row["network_out"]),
+                    process_count=int(row["process_count"]),
+                    uptime_hours=int(row["uptime_hours"]),
+                )
+                records.append(record)
+
+        return cls(
+            system_name=system_name,
+            date_generated=datetime.now(),
+            records=records,
+        )
+
+    @classmethod
+    def from_xlsx(
+        cls, filepath: Path, system_name: str, sheet_name: Optional[str] = None
+    ) -> "SystemData":
+        """Load system data from an XLSX file.
+
+        Args:
+            filepath: Path to the XLSX file
+            system_name: Name to identify this system
+            sheet_name: Optional sheet name. If None, uses the first sheet.
+        """
+        records = []
+        wb = load_workbook(filepath, read_only=True, data_only=True)
+
+        # Use specified sheet or first sheet
+        if sheet_name:
+            ws = wb[sheet_name]
+        else:
+            ws = wb.active
+
+        # Get headers from first row
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return cls(
+                system_name=system_name, date_generated=datetime.now(), records=[]
+            )
+
+        headers = [str(h).lower() if h else "" for h in rows[0]]
+
+        # Process data rows
+        for row in rows[1:]:
+            if not any(row):  # Skip empty rows
+                continue
+            row_dict = dict(zip(headers, row))
+            record = SystemRecord(
+                hostname=str(row_dict.get("hostname", "")),
+                fqdn=str(row_dict.get("fqdn", "")),
+                ip_address=str(row_dict.get("ip_address", "")),
+                cpu_usage=float(row_dict.get("cpu_usage", 0)),
+                memory_usage=float(row_dict.get("memory_usage", 0)),
+                disk_usage=float(row_dict.get("disk_usage", 0)),
+                network_in=float(row_dict.get("network_in", 0)),
+                network_out=float(row_dict.get("network_out", 0)),
+                process_count=int(row_dict.get("process_count", 0)),
+                uptime_hours=int(row_dict.get("uptime_hours", 0)),
+            )
+            records.append(record)
+
+        wb.close()
+        return cls(
+            system_name=system_name,
+            date_generated=datetime.now(),
+            records=records,
+        )
+
+    @classmethod
+    def from_file(
+        cls,
+        filepath: Path,
+        system_name: str,
+        file_type: FileType,
+        sheet_name: Optional[str] = None,
+    ) -> "SystemData":
+        """Load system data from a file based on file type.
+
+        Args:
+            filepath: Path to the data file
+            system_name: Name to identify this system
+            file_type: Type of file (CSV or XLSX)
+            sheet_name: Optional sheet name for XLSX files
+        """
+        if file_type == FileType.CSV:
+            return cls.from_csv(filepath, system_name)
+        elif file_type == FileType.XLSX:
+            return cls.from_xlsx(filepath, system_name, sheet_name)
+        else:
+            raise ValueError(f"Unsupported file type: {file_type}")
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Convert records to a pandas DataFrame with system_name column and parsed FQDN parts."""
+        data = []
+        for record in self.records:
+            # Parse FQDN into components
+            fqdn_host, fqdn_system, fqdn_domain = parse_fqdn(record.fqdn)
+
+            row = {
+                "system_name": self.system_name,
+                "date_generated": self.date_generated,
+                "hostname": record.hostname,
+                "fqdn": record.fqdn,
+                "fqdn_host": fqdn_host,
+                "fqdn_system": fqdn_system,
+                "fqdn_domain": fqdn_domain,
+                "ip_address": record.ip_address,
+                "cpu_usage": record.cpu_usage,
+                "memory_usage": record.memory_usage,
+                "disk_usage": record.disk_usage,
+                "network_in": record.network_in,
+                "network_out": record.network_out,
+                "process_count": record.process_count,
+                "uptime_hours": record.uptime_hours,
+            }
+            data.append(row)
+        return pd.DataFrame(data)
+
+
+@dataclass
+class FileConfig:
+    """Configuration for a data file to load."""
+
+    filename: str
+    system_name: str
+    file_type: FileType
+    sheet_name: Optional[str] = None  # For XLSX files
+
+
+def load_all_systems(data_dir: Path) -> tuple[List[SystemData], pd.DataFrame]:
+    """
+    Load all data files from the data directory.
+
+    Returns:
+        A tuple containing:
+        - List of SystemData objects (one per file)
+        - Combined pandas DataFrame with all records
+    """
+    # File configurations with type indicators
+    file_configs = [
+        FileConfig("system_alpha.csv", "Alpha", FileType.CSV),
+        FileConfig("system_beta.csv", "Beta", FileType.CSV),
+        FileConfig("system_gamma.csv", "Gamma", FileType.CSV),
+        FileConfig(
+            "system_delta.xlsx", "Delta", FileType.XLSX, sheet_name="SystemData"
+        ),
+        FileConfig(
+            "system_epsilon.xlsx", "Epsilon", FileType.XLSX, sheet_name="SystemData"
+        ),
+    ]
+
+    # Store SystemData objects in an array
+    system_data_array: List[SystemData] = []
+
+    for config in file_configs:
+        filepath = data_dir / config.filename
+        if filepath.exists():
+            system_data = SystemData.from_file(
+                filepath, config.system_name, config.file_type, config.sheet_name
+            )
+            system_data_array.append(system_data)
+            print(
+                f"Loaded {len(system_data.records)} records from {config.system_name} ({config.file_type.value})"
+            )
+
+    # Combine all data into a single DataFrame
+    dataframes = [sd.to_dataframe() for sd in system_data_array]
+    combined_df = pd.concat(dataframes, ignore_index=True)
+
+    return system_data_array, combined_df
+
+
+def extract_date_from_dirname(dirname: str) -> str:
+    """Extract date from directory name in format data-YYYY-MM-DD.
+
+    Args:
+        dirname: Directory name like 'data-2024-01-12'
+
+    Returns:
+        Date string in YYYY-MM-DD format
+    """
+    match = re.search(r"data-(\d{4}-\d{2}-\d{2})", dirname)
+    if match:
+        return match.group(1)
+    # If no date found, use today's date
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def main():
+    """Main entry point - load raw data and save to parquet."""
+    parser = argparse.ArgumentParser(
+        description="Ingest raw CSV/XLSX data into a parquet file"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="data",
+        help="Data subdirectory (e.g., 'data-2024-01-12' or 'data')",
+    )
+    args = parser.parse_args()
+
+    # Resolve data directory
+    data_dir = Path(__file__).parent / args.data_dir
+
+    if not data_dir.exists():
+        print(f"Error: Data directory does not exist: {data_dir}")
+        return
+
+    # Extract date from directory name for file naming
+    date_str = extract_date_from_dirname(args.data_dir)
+    output_file = data_dir / f"system_data_{date_str}.parquet"
+
+    print(f"Data directory: {data_dir}")
+    print(f"Date: {date_str}")
+    print("Loading system data...")
+    print("-" * 50)
+
+    system_data_array, combined_df = load_all_systems(data_dir)
+
+    print("-" * 50)
+    print(f"\nTotal systems loaded: {len(system_data_array)}")
+    print(f"Total records: {len(combined_df)}")
+
+    # Save to parquet
+    combined_df.to_parquet(output_file, engine="pyarrow", compression="snappy")
+    print(f"\nData saved to: {output_file}")
+    print(f"File size: {output_file.stat().st_size / 1024:.2f} KB")
+
+
+if __name__ == "__main__":
+    main()

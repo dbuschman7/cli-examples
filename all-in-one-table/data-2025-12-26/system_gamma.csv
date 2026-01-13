@@ -1,0 +1,6 @@
+hostname,fqdn,ip_address,cpu_usage,memory_usage,disk_usage,network_in,network_out,process_count,uptime_hours
+node1,node1.gamma.internal.org,172.16.0.100,41.2,45.3,67.8,805.7,402.9,162,4488
+node2,node2.gamma.internal.org,172.16.0.101,54.7,60.8,73.5,1073.6,536.8,185,3768
+node3,node3.gamma.internal.org,172.16.0.102,32.1,34.2,51.5,537.8,268.9,118,3048
+node4,node4.gamma.internal.org,172.16.0.103,67.5,75.8,84.2,1612.5,806.3,242,1608
+node5,node5.gamma.internal.org,172.16.0.104,20.8,28.3,41.2,402.9,201.5,82,5928
