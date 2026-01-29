@@ -235,6 +235,37 @@
             font-weight: 600;
         }
 
+        th .copy-btn,
+        th .sort-btn {
+            padding: 2px 6px;
+            margin-top: 4px;
+            font-size: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        th .copy-btn:hover,
+        th .sort-btn:hover {
+            background-color: var(--accent-1);
+            color: var(--text-emphasis);
+            border-color: var(--accent-1);
+        }
+
+        th .copy-btn:active,
+        th .sort-btn:active {
+            transform: scale(0.95);
+        }
+
+        th .header-buttons {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
         th select {
             padding: 2px 4px;
             border: 1px solid var(--border-color);
@@ -669,6 +700,7 @@
         let selectedRowIndex = null;
         let columnFilters = {};
         const MAX_FILTER_VALUES = 100;
+        let sortState = { column: null, direction: null }; // null, 'asc', or 'desc'
 
         // Initialize the application
         function init() {
@@ -1024,6 +1056,36 @@
                     headerContent.appendChild(multiSelect);
                 }
 
+                // Add button container for all columns
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'header-buttons';
+
+                // Add sort button for all columns
+                const sortBtn = document.createElement('button');
+                sortBtn.type = 'button';
+                sortBtn.className = 'sort-btn';
+                sortBtn.textContent = 'sort ↕';
+                sortBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    sortByColumn(col, e);
+                });
+                buttonContainer.appendChild(sortBtn);
+
+                // Add copy button only for status and category columns
+                if (col === 'status' || col === 'category') {
+                    const copyBtn = document.createElement('button');
+                    copyBtn.type = 'button';
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'copy';
+                    copyBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        copyColumnValues(col, e);
+                    });
+                    buttonContainer.appendChild(copyBtn);
+                }
+
+                headerContent.appendChild(buttonContainer);
+
                 th.appendChild(headerContent);
                 headerRow.appendChild(th);
             });
@@ -1160,6 +1222,93 @@
         function updateRowCount() {
             const rowCount = document.getElementById('rowCount');
             rowCount.textContent = `${filteredData.length} of ${tableData.length} rows`;
+        }
+
+        // Copy unique values from a column for visible rows
+        function copyColumnValues(column, event) {
+            // Get unique values from visible (filtered) data
+            const uniqueValues = [...new Set(filteredData.map(row => row[column]))]
+                .filter(v => v !== undefined && v !== null)
+                .sort();
+
+            // Create comma-separated list
+            const csvList = uniqueValues.join(',');
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(csvList).then(() => {
+                // Visual feedback - briefly change button text
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 1000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Sort the table by a column
+        function sortByColumn(column, event) {
+            // Determine sort direction
+            if (sortState.column === column) {
+                // Cycle through: asc -> desc -> none
+                if (sortState.direction === 'asc') {
+                    sortState.direction = 'desc';
+                } else if (sortState.direction === 'desc') {
+                    sortState.direction = null;
+                    sortState.column = null;
+                } else {
+                    sortState.direction = 'asc';
+                }
+            } else {
+                // New column, start with ascending
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+
+            // Update button text to show current state
+            const btn = event.target;
+            if (sortState.column === column) {
+                if (sortState.direction === 'asc') {
+                    btn.textContent = 'sort ↑';
+                } else if (sortState.direction === 'desc') {
+                    btn.textContent = 'sort ↓';
+                }
+            } else {
+                btn.textContent = 'sort ↕';
+            }
+
+            // Reset other sort buttons
+            document.querySelectorAll('.sort-btn').forEach(sortBtn => {
+                if (sortBtn !== btn) {
+                    sortBtn.textContent = 'sort ↕';
+                }
+            });
+
+            // Apply sorting
+            if (sortState.column && sortState.direction) {
+                filteredData.sort((a, b) => {
+                    const valA = a[sortState.column];
+                    const valB = b[sortState.column];
+
+                    // Handle null/undefined values
+                    if (valA === null || valA === undefined) return 1;
+                    if (valB === null || valB === undefined) return -1;
+
+                    // String comparison
+                    const comparison = String(valA).localeCompare(String(valB));
+                    return sortState.direction === 'asc' ? comparison : -comparison;
+                });
+            } else {
+                // No sort - reapply filters to restore original filtered order
+                applyFilters();
+                return;
+            }
+
+            // Re-render table body with sorted data
+            renderTableBody();
         }
 
         // Initialize on DOM ready
