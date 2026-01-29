@@ -1050,12 +1050,6 @@
                 headerLabel.textContent = col;
                 headerContent.appendChild(headerLabel);
 
-                // Add filter dropdown if this column has filter options
-                if (columnFilters[col]) {
-                    const multiSelect = createMultiSelect(col, columnFilters[col]);
-                    headerContent.appendChild(multiSelect);
-                }
-
                 // Add button container for all columns
                 const buttonContainer = document.createElement('div');
                 buttonContainer.className = 'header-buttons';
@@ -1085,6 +1079,12 @@
                 }
 
                 headerContent.appendChild(buttonContainer);
+
+                // Add filter dropdown if this column has filter options
+                if (columnFilters[col]) {
+                    const multiSelect = createMultiSelect(col, columnFilters[col]);
+                    headerContent.appendChild(multiSelect);
+                }
 
                 th.appendChild(headerContent);
                 headerRow.appendChild(th);
