@@ -413,11 +413,38 @@
         /* Detail panel */
         .detail-panel {
             width: 320px;
-            min-width: 280px;
+            min-width: 200px;
+            max-width: 800px;
             background-color: var(--bg-secondary);
-            border-left: 2px solid var(--accent-2);
             display: flex;
             flex-direction: column;
+            position: relative;
+        }
+
+        .resize-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            background-color: var(--accent-2);
+            transition: background-color 0.2s;
+            z-index: 100;
+        }
+
+        .resize-handle:hover,
+        .resize-handle.resizing {
+            background-color: var(--accent-1);
+        }
+
+        .resize-handle::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            right: -2px;
+            top: 0;
+            bottom: 0;
         }
 
         .detail-header {
@@ -682,7 +709,8 @@
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
-            <div class="detail-panel">
+            <div class="detail-panel" id="detailPanel">
+                <div class="resize-handle" id="resizeHandle"></div>
                 <div class="detail-header">Row Details</div>
                 <div class="detail-content" id="detailContent">
                     <div class="detail-empty">Select a row to view details</div>
@@ -719,10 +747,53 @@
 
             setupThemeToggle();
             setupVersionsPanel();
+            setupResizeHandle();
             analyzeColumnsForFilters();
             renderTable();
             setupEventListeners();
             updateRowCount();
+        }
+
+        // Setup resize handle for detail panel
+        function setupResizeHandle() {
+            const resizeHandle = document.getElementById('resizeHandle');
+            const detailPanel = document.getElementById('detailPanel');
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = detailPanel.offsetWidth;
+                resizeHandle.classList.add('resizing');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const deltaX = startX - e.clientX;
+                const newWidth = startWidth + deltaX;
+
+                // Apply constraints
+                const minWidth = 200;
+                const maxWidth = 800;
+                const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+
+                detailPanel.style.width = constrainedWidth + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizeHandle.classList.remove('resizing');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
         }
 
         // Setup versions panel toggle
