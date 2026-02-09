@@ -7,6 +7,8 @@ services:
     volumes:
       - ./config.yaml:/config/config.yaml:ro
       - ./streams:/streams:ro
+      - ./apps:/apps:ro
+      - ./uploads:/uploads
     environment:
       - STREAMS_DIR=/streams
     restart: unless-stopped

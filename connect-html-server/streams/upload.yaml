@@ -1,0 +1,60 @@
+# File Upload Stream
+# Accepts file uploads via HTTP POST and saves them to the uploads directory
+
+input:
+  http_server:
+    path: /upload
+    allowed_verbs:
+      - POST
+    timeout: 30s
+
+pipeline:
+  processors:
+    - mapping: |
+        # Extract filename from metadata or generate one
+        # Try multiple header variations (case-insensitive)
+        let filename = if meta("filename").or("") != "" {
+            meta("filename")
+        } else if meta("Filename").or("") != "" {
+            meta("Filename")
+        } else if meta("FILENAME").or("") != "" {
+            meta("FILENAME")
+        } else if meta("Content-Disposition").or("").contains("filename=") {
+            meta("Content-Disposition").re_find_all("filename=\"?([^\";\n]+)\"?").index(0).index(1)
+        } else if meta("content-disposition").or("").contains("filename=") {
+            meta("content-disposition").re_find_all("filename=\"?([^\";\n]+)\"?").index(0).index(1)
+        } else {
+            "upload_" + timestamp_unix().ts_format("20060102_150405") + ".bin"
+        }
+
+        # Store metadata for later use
+        meta stored_filename = $filename
+        meta stored_size = content().length()
+        meta stored_timestamp = now()
+
+        # Keep original content for file write
+        root = content()
+
+output:
+  broker:
+    pattern: fan_out
+    outputs:
+      # Output 1: Write to file
+      - file:
+          codec: all-bytes
+          path: /uploads/${! meta("stored_filename") }
+
+      # Output 2: Send HTTP response
+      - sync_response:
+          status: 200
+          headers:
+            Content-Type: application/json
+          metadata:
+            exclude_prefixes: []
+        processors:
+          - mapping: |
+              root.filename = meta("stored_filename")
+              root.filepath = "/uploads/" + meta("stored_filename")
+              root.size = meta("stored_size").number()
+              root.timestamp = meta("stored_timestamp")
+              root.status = "success"

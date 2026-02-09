@@ -1,0 +1,11 @@
+# Uploaded files directory
+# Files uploaded via the /upload endpoint are stored here
+
+*.bin
+*.txt
+*.pdf
+*.jpg
+*.png
+*.zip
+*
+!.gitignore

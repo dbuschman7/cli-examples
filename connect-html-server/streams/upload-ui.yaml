@@ -1,0 +1,20 @@
+# Stream: File Upload UI
+# Serves HTML page for file uploads
+
+input:
+    http_server:
+        path: /upload-ui
+        timeout: 5s
+        allowed_verbs: [GET]
+        sync_response:
+            status: 200
+            headers:
+                Content-Type: "text/html"
+
+pipeline:
+    processors:
+        - mapping: |
+              root = file("/apps/upload.html").string()
+
+output:
+    sync_response: {}
