@@ -1,0 +1,13 @@
+services:
+  redpanda-connect:
+    build: .
+    container_name: redpanda-connect-server
+    ports:
+      - "4195:4195"
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - ./streams:/streams:ro
+    environment:
+      - STREAMS_DIR=/streams
+    restart: unless-stopped
+    command: ["redpanda-connect", "streams", "-o", "/config/config.yaml", "--prefix-stream-endpoints=false", "/streams/*.yaml"]

@@ -1,0 +1,42 @@
+# Redpanda Connect Streams Mode Configuration
+# This is the main configuration for streams mode
+
+# HTTP server configuration
+http:
+  address: 0.0.0.0:4195
+  enabled: true
+  root_path: /
+  debug_endpoints: true
+  cors:
+    enabled: false
+  basic_auth:
+    enabled: true
+    realm: "Redpanda Connect"
+    username: admin
+    password_hash: "jGl25bVBBBW96Qi9Te4V37Fnqchz/Eu4qB9vKrRIqRg="
+
+# Metrics configuration
+metrics:
+  prometheus:
+    use_histogram_timing: false
+    histogram_buckets: []
+    summary_quantiles_objectives:
+      - error: 0.05
+        quantile: 0.5
+      - error: 0.01
+        quantile: 0.9
+      - error: 0.001
+        quantile: 0.99
+    add_process_metrics: false
+    add_go_metrics: false
+
+# Logging
+logger:
+  level: INFO
+  format: json
+  add_timestamp: false
+  level_name: level
+  timestamp_name: time
+  message_name: msg
+  static_fields:
+    "@service": redpanda-connect

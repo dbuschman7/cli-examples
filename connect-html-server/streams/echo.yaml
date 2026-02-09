@@ -1,0 +1,16 @@
+# Example stream: Echo service
+# This stream receives HTTP POST requests and echoes them back
+
+input:
+  http_server:
+    path: /echo
+    allowed_verbs:
+      - POST
+    timeout: 5s
+    sync_response:
+      status: 200
+      headers:
+        Content-Type: "application/json"
+
+output:
+  sync_response: {}

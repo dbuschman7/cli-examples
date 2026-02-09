@@ -1,0 +1,48 @@
+# Example stream: Status page generator
+# Generates a simple HTML status page
+
+input:
+    http_server:
+        path: /status
+        timeout: 5s
+        allowed_verbs: [GET]
+        sync_response:
+            status: 200
+            headers:
+                Content-Type: "text/html"
+pipeline:
+    processors:
+        - mapping: |
+              root = """
+              <!DOCTYPE html>
+              <html>
+              <head>
+                  <title>Redpanda Connect Status</title>
+                  <meta http-equiv="refresh" content="5">
+                  <style>
+                      body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                      .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                      h1 { color: #333; }
+                      .status { color: #4CAF50; font-weight: bold; }
+                      .timestamp { color: #666; font-size: 0.9em; }
+                  </style>
+              </head>
+              <body>
+                  <div class="container">
+                      <h1>Redpanda Connect Server</h1>
+                      <p class="status">✓ Status: Running</p>
+                      <p class="timestamp">Current Time: """ + timestamp_unix().ts_format("2006-01-02 15:04:05 MST") + """</p>
+                      <h2>Available Endpoints:</h2>
+                      <ul>
+                          <li><a href="/status">/status</a> - This status page</li>
+                          <li><a href="/health">/health</a> - Health check</li>
+                          <li>/echo - Echo service (POST)</li>
+                      </ul>
+                      <p><em>Auto-refresh enabled (5 seconds)</em></p>
+                  </div>
+              </body>
+              </html>
+              """
+
+output:
+    sync_response: {}

@@ -1,0 +1,21 @@
+# Example stream: Health check endpoint
+# Returns a simple JSON health response
+
+input:
+  http_server:
+    path: /health
+    allowed_verbs: [GET]
+    timeout: 5s
+    sync_response:
+      status: 200
+      headers:
+        Content-Type: "application/json"
+pipeline:
+  processors:
+    - mapping: |
+        root.status = "healthy"
+        root.timestamp = now()
+        root.service = "redpanda-connect"
+
+output:
+  sync_response: {}
