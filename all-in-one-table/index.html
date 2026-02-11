@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -643,7 +643,7 @@
             <div class="titlebar-right">
                 <button class="versions-btn" id="versionsBtn">📋 Versions</button>
                 <div class="theme-toggle">
-                    <button id="themeToggle">🌙 Dark</button>
+                    <button id="themeToggle">☀️ Light</button>
                 </div>
             </div>
         </div>
@@ -800,11 +800,11 @@
         // Theme toggle functionality
         function setupThemeToggle() {
             const themeToggle = document.getElementById('themeToggle');
-            const savedTheme = localStorage.getItem('theme') || 'light';
+            const savedTheme = localStorage.getItem('theme') || 'dark';
 
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                themeToggle.textContent = '☀️ Light';
+            if (savedTheme === 'light') {
+                document.documentElement.removeAttribute('data-theme');
+                themeToggle.textContent = '🌙 Dark';
             }
 
             themeToggle.addEventListener('click', () => {
