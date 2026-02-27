@@ -12,4 +12,4 @@ services:
     environment:
       - STREAMS_DIR=/streams
     restart: unless-stopped
-    command: ["redpanda-connect", "streams", "-o", "/config/config.yaml", "--prefix-stream-endpoints=false", "/streams/*.yaml"]
+    command: ["redpanda-connect", "streams", "-o", "/config/config.yaml", "--prefix-stream-endpoints=false", "/streams/unified-server.yaml"]

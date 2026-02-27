@@ -1,0 +1,83 @@
+# Unified HTTP Server Stream
+# - Serves static assets from /apps directory for GET requests to /static/*
+# - Forwards dynamic GET/POST/PUT requests to Python backend for business logic
+
+input:
+  http_server:
+    path: /
+    allowed_verbs:
+      - GET
+      - POST
+      - PUT
+    timeout: 30s
+    sync_response:
+      status: ${! meta("http_status").or("200") }
+      headers:
+        Content-Type: ${! meta("content_type").or("application/json") }
+
+pipeline:
+  processors:
+    # Store request metadata for later use
+    - mapping: |
+        meta backend_url = "http://localhost:5000" + meta("http_server_request_path")
+        meta request_verb = meta("http_server_verb")
+        root = content()
+    
+    - switch:
+      - check: 'meta("http_server_verb") == "GET" && meta("http_server_request_path").has_prefix("/static/")'
+        processors:
+          - mapping: |
+              # Map /static/* to /apps/* filesystem path
+              let relative_path = meta("http_server_request_path").replace("/static/", "")
+              let filepath = "/apps/" + $relative_path
+              
+              # Set content type based on file extension
+              meta content_type = if $filepath.has_suffix(".html") {
+                  "text/html"
+              } else if $filepath.has_suffix(".css") {
+                  "text/css"
+              } else if $filepath.has_suffix(".js") {
+                  "application/javascript"
+              } else if $filepath.has_suffix(".json") {
+                  "application/json"
+              } else if $filepath.has_suffix(".png") {
+                  "image/png"
+              } else if $filepath.has_suffix(".jpg") || $filepath.has_suffix(".jpeg") {
+                  "image/jpeg"
+              } else if $filepath.has_suffix(".svg") {
+                  "image/svg+xml"
+              } else {
+                  "application/octet-stream"
+              }
+              
+              meta http_status = 200
+              
+              # Read file
+              root = file($filepath)
+      
+      - check: 'true'
+        processors:
+          # Prepare request data for Python script
+          - mapping: |
+              root = {
+                "method": meta("request_verb"),
+                "path": meta("http_server_request_path"),
+                "headers": {
+                  "content-type": meta("Content-Type").or("application/json"),
+                  "user-agent": meta("http_server_user_agent")
+                },
+                "body": content().string()
+              }
+          
+          # Execute Python script
+          - subprocess:
+              name: python3
+              args:
+                - /python/unified-server.py
+          
+          - mapping: |
+              meta http_status = 200
+              meta content_type = "application/json"
+
+output:
+  sync_response: {}
