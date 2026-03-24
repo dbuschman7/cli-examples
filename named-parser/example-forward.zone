@@ -1,0 +1,67 @@
+; Forward zone file for example.com
+; This is a comment line
+; Zone file demonstrates various DNS record types
+
+$TTL 86400
+$ORIGIN example.com.
+
+; Start of Authority record
+@       IN      SOA     ns1.example.com. hostmaster.example.com. (
+                        2024032401  ; Serial
+                        3600        ; Refresh
+                        1800        ; Retry
+                        604800      ; Expire
+                        86400 )     ; Minimum TTL
+
+; Name servers
+@               IN      NS      ns1.example.com.
+@               IN      NS      ns2.example.com.
+
+; A records - Base hostnames with their IP addresses
+ns1             IN      A       192.168.1.10
+ns2             IN      A       192.168.1.11
+mail            IN      A       192.168.1.20
+web             IN      A       192.168.1.30
+app             IN      A       192.168.1.40
+db              IN      A       192.168.1.50
+
+; Additional servers
+server01        IN      A       192.168.1.100
+server02        IN      A       192.168.1.101
+server03        IN      A       192.168.1.102
+
+; DMZ hosts
+dmz-web         IN      A       10.0.1.10
+dmz-proxy       IN      A       10.0.1.11
+
+; CNAME records - Aliases pointing to base hostnames
+; These are NOT base hostnames, but aliases
+www             IN      CNAME   web.example.com.
+webmail         IN      CNAME   mail.example.com.
+smtp            IN      CNAME   mail.example.com.
+imap            IN      CNAME   mail.example.com.
+api             IN      CNAME   app.example.com.
+database        IN      CNAME   db.example.com.
+
+; Application specific CNAMEs
+staging         IN      CNAME   server01.example.com.
+production      IN      CNAME   server02.example.com.
+backup          IN      CNAME   server03.example.com.
+
+; MX records for mail
+@               IN      MX      10 mail.example.com.
+@               IN      MX      20 mail2.example.com.
+
+; Additional A record for backup mail server
+mail2           IN      A       192.168.1.21
+
+; Development environment
+dev-web         IN      A       192.168.2.30
+dev-app         IN      A       192.168.2.40
+dev-db          IN      A       192.168.2.50
+
+; More CNAMEs for aliases
+ftp             IN      CNAME   server01.example.com.
+files           IN      CNAME   server01.example.com.
+
+; End of forward zone file

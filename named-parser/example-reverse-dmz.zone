@@ -1,0 +1,23 @@
+; Reverse zone file for 10.0.1.0/24 (DMZ network)
+; PTR records for DMZ hosts
+
+$TTL 86400
+$ORIGIN 1.0.10.in-addr.arpa.
+
+; Start of Authority
+@       IN      SOA     ns1.example.com. hostmaster.example.com. (
+                        2024032401  ; Serial
+                        3600        ; Refresh
+                        1800        ; Retry
+                        604800      ; Expire
+                        86400 )     ; Minimum TTL
+
+; Name servers
+@               IN      NS      ns1.example.com.
+@               IN      NS      ns2.example.com.
+
+; PTR records for DMZ hosts
+10              IN      PTR     dmz-web.example.com.
+11              IN      PTR     dmz-proxy.example.com.
+
+; End of reverse zone file for 10.0.1.0/24

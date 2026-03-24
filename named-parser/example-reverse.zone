@@ -1,0 +1,46 @@
+; Reverse zone file for 192.168.1.0/24
+; PTR records point to the BASE hostname, not CNAMEs
+; This is important for proper reverse DNS resolution
+
+$TTL 86400
+$ORIGIN 1.168.192.in-addr.arpa.
+
+; Start of Authority
+@       IN      SOA     ns1.example.com. hostmaster.example.com. (
+                        2024032401  ; Serial
+                        3600        ; Refresh
+                        1800        ; Retry
+                        604800      ; Expire
+                        86400 )     ; Minimum TTL
+
+; Name servers
+@               IN      NS      ns1.example.com.
+@               IN      NS      ns2.example.com.
+
+; PTR records - Reverse lookups point to BASE hostnames
+; These should match the A records in the forward zone
+; NOT the CNAMEs
+
+; Infrastructure servers (matching forward zone A records)
+10              IN      PTR     ns1.example.com.
+11              IN      PTR     ns2.example.com.
+20              IN      PTR     mail.example.com.
+21              IN      PTR     mail2.example.com.
+30              IN      PTR     web.example.com.
+40              IN      PTR     app.example.com.
+50              IN      PTR     db.example.com.
+
+; Additional servers (matching forward zone A records)
+100             IN      PTR     server01.example.com.
+101             IN      PTR     server02.example.com.
+102             IN      PTR     server03.example.com.
+
+; Note: www.example.com is a CNAME pointing to web.example.com
+; The PTR for 192.168.1.30 points to web.example.com (the base hostname)
+; NOT to www.example.com (the alias/CNAME)
+
+; This demonstrates the important distinction:
+; Forward: www -> CNAME -> web -> A -> 192.168.1.30
+; Reverse: 192.168.1.30 -> PTR -> web.example.com (base hostname)
+
+; End of reverse zone file for 192.168.1.0/24
