@@ -1,0 +1,27 @@
+# Example Host File for iDRAC Scripts
+# Copy this to hosts.txt and add your actual iDRAC addresses
+#
+# Format:
+#   - One hostname or IP address per line
+#   - Lines starting with # are comments
+#   - Empty lines are ignored
+#
+# When you run scripts with remove_on_success=True,
+# successfully processed hosts will be automatically
+# removed from this file.
+
+# Production Servers - Building A
+#192.168.1.100
+#192.168.1.101
+#192.168.1.102
+
+# Production Servers - Building B
+#192.168.2.100
+#192.168.2.101
+
+# Development Servers
+#dev-idrac-01.example.com
+#dev-idrac-02.example.com
+
+# Test Servers
+#test-idrac-01.example.com
