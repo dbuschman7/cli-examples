@@ -111,6 +111,53 @@ Save as `check_servers.py` and run:
 python check_servers.py
 ```
 
+### Advanced: Gold File Pattern
+
+For production environments, use the **gold file pattern** where the original host list remains immutable:
+
+```bash
+# 1. Create immutable gold standard file
+python hostfile.py create hosts-gold.txt 192.168.1.100 192.168.1.101 192.168.1.102
+
+# 2. Use the integrated example - creates timestamped working copy automatically
+./example_with_gold_file.py hosts-gold.txt --remove-on-success
+```
+
+**What happens:**
+- Creates timestamped copy: `work/hosts-gold_20260325_181800.txt`
+- Operations modify the working copy only
+- Gold file remains pristine with all original hosts
+- Each run creates a new timestamped copy (audit trail)
+
+**Manual control:**
+```bash
+# Create working copy yourself
+WORKING=$(python hostfile.py working-copy hosts-gold.txt --work-dir ./work | tail -1)
+
+# Use it with any script
+python example_check_power.py "$WORKING" --remove-on-success --no-backup
+
+# Gold file still has all original hosts
+python hostfile.py list hosts-gold.txt  # 3 hosts
+python hostfile.py list "$WORKING"      # 1 host (if 2 succeeded)
+```
+
+**Chain multiple operations:**
+```bash
+WORKING=$(python hostfile.py working-copy hosts-gold.txt --work-dir ./work | tail -1)
+
+# Run multiple scripts on same working copy
+./check_power.py "$WORKING" --remove-on-success --no-backup
+./update_firmware.py "$WORKING" --remove-on-success --no-backup
+./verify_health.py "$WORKING" --remove-on-success --no-backup
+```
+
+**Benefits:**
+- ✅ Gold file never modified (immutable)
+- ✅ Timestamped copies provide audit trail  
+- ✅ Can run multiple operations in parallel
+- ✅ Safe for production - always have original list
+
 ## Example Host File
 
 Create `hosts.txt`:

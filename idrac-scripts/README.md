@@ -16,6 +16,7 @@ Python scripts for managing Dell servers via iDRAC 9 Redfish API. Provides sessi
 - **Read/Write** - Manage lists of hosts from text files
 - **Auto-Remove** - Remove hosts from list when operations succeed
 - **Backup/Restore** - Automatic backup before modifications
+- **Gold File Pattern** - Immutable host lists with timestamped working copies
 - **Batch Processing** - Process multiple hosts with callbacks
 - **Validation** - Check for duplicates, validate format
 - **Comments** - Support for comment lines in host files
@@ -96,7 +97,35 @@ python hostfile.py count hosts.txt
 
 # Backup hostfile
 python hostfile.py backup hosts.txt
+
+# Create working copy from gold standard (immutable pattern)
+python hostfile.py working-copy hosts-gold.txt --work-dir ./work
 ```
+
+### Gold File Pattern (Immutable Host Lists)
+
+For production environments where you want to preserve the original host list:
+
+```bash
+# Create immutable gold standard file
+python hostfile.py create hosts-gold.txt 192.168.1.100 192.168.1.101 192.168.1.102
+
+# Option 1: Use the integrated example script
+./example_with_gold_file.py hosts-gold.txt --remove-on-success
+
+# Option 2: Create working copy manually
+WORKING=$(python hostfile.py working-copy hosts-gold.txt --work-dir ./work | tail -1)
+python example_check_power.py "$WORKING" --remove-on-success --no-backup
+
+# Gold file remains pristine with all original hosts
+python hostfile.py list hosts-gold.txt
+```
+
+**Benefits:**
+- Gold file never modified - always have original list
+- Timestamped working copies provide audit trail
+- Can run multiple operations in parallel
+- Safe for production environments
 
 ## Usage Examples
 
@@ -263,6 +292,9 @@ Features:
 - `restore(backup_path)` - Restore from backup
 - `list_backups()` - List available backups
 
+**Gold File Pattern:**
+- `create_working_copy(gold_file, work_dir, timestamp_format)` - Create timestamped working copy (static method)
+
 ## Security Considerations
 
 ### Credentials
@@ -282,6 +314,141 @@ Features:
 - Use VPN or secure tunnel for remote access
 - Keep iDRAC firmware updated
 - Enable iDRAC security features (2FA, IP filtering)
+
+## Host File Management Patterns
+
+### Pattern 1: Simple Host List (Backup Pattern)
+
+Best for development or when you want a single evolving host list:
+
+```bash
+# Create host file
+python hostfile.py create hosts.txt server1 server2 server3
+
+# Process hosts (auto-backup before modifications)
+python example_check_power.py hosts.txt --remove-on-success
+
+# Successful hosts removed, failures remain for retry
+python hostfile.py list hosts.txt
+```
+
+**Use when:**
+- Working with a single list that evolves
+- Quick development/testing
+- Manual host management is acceptable
+
+### Pattern 2: Gold File (Immutable Pattern)
+
+Best for production with auditability and repeatability:
+
+```bash
+# Create immutable gold file (never modified by scripts)
+python hostfile.py create hosts-gold.txt server1 server2 server3
+
+# Each operation creates a timestamped working copy
+./example_with_gold_file.py hosts-gold.txt --remove-on-success
+
+# Output:
+# ✓ Created working copy: work/hosts-gold_20260325_181800.txt
+# Processing 3 host(s)...
+# Gold file preserved: hosts-gold.txt (3 hosts)
+```
+
+**Use when:**
+- Production environments requiring auditability
+- Need to preserve original host list
+- Running multiple operations in parallel
+- Compliance or audit requirements
+
+### Working with Gold Files
+
+#### Creating Working Copies
+
+```bash
+# CLI command returns path for scripting
+WORKING=$(python hostfile.py working-copy hosts-gold.txt --work-dir ./work | tail -1)
+echo "Working with: $WORKING"
+
+# Custom timestamp format
+python hostfile.py working-copy hosts-gold.txt \
+    --work-dir ./runs \
+    --timestamp-format "%Y-%m-%d_%H-%M-%S"
+```
+
+#### Python API
+
+```python
+from hostfile import HostFile
+
+# Create timestamped working copy
+working_path = HostFile.create_working_copy(
+    gold_file="hosts-gold.txt",
+    work_dir="./work",
+    timestamp_format="%Y%m%d_%H%M%S"  # Optional
+)
+
+if working_path:
+    # Work with copy (auto_backup=False since it's already a copy)
+    hf = HostFile(str(working_path), auto_backup=False)
+    
+    success, fail = hf.process_hosts(
+        callback=your_function,
+        remove_on_success=True
+    )
+    
+    # Gold file remains untouched!
+```
+
+#### Common Gold File Workflows
+
+**Workflow A: Single Operation**
+```bash
+# Use integrated example (easiest)
+./example_with_gold_file.py hosts-gold.txt --remove-on-success
+```
+
+**Workflow B: Chain Multiple Operations**
+```bash
+# Create one working copy, run multiple scripts
+WORKING=$(python hostfile.py working-copy hosts-gold.txt --work-dir ./work | tail -1)
+
+./script1_check_power.py "$WORKING" --remove-on-success --no-backup
+./script2_update_firmware.py "$WORKING" --remove-on-success --no-backup
+./script3_verify_health.py "$WORKING" --remove-on-success --no-backup
+
+# Check final status
+python hostfile.py list "$WORKING"
+```
+
+**Workflow C: Parallel Operations**
+```bash
+# Different operations can run simultaneously
+./operation1.py hosts-gold.txt --work-dir ./work1 &
+./operation2.py hosts-gold.txt --work-dir ./work2 &
+wait
+
+# Gold file never conflicts
+```
+
+#### Directory Structure with Gold Files
+
+```
+idrac-scripts/
+├── hosts-gold.txt          # Immutable gold standard (never modified)
+├── work/                   # Working copies
+│   ├── hosts-gold_20260325_093000.txt
+│   ├── hosts-gold_20260325_140530.txt
+│   └── hosts-gold_20260325_181800.txt
+└── runs/                   # Alternative work directory
+    └── hosts-gold_20260325_164500.txt
+```
+
+**Best Practices:**
+- Never modify gold files manually - treat as read-only
+- Use descriptive names: `hosts-gold.txt`, `production-servers-gold.txt`
+- Choose dedicated work directories to keep organized
+- Clean up old working copies periodically
+- Disable `auto_backup` when working with copies (already timestamped)
 
 ## Common Workflows
 

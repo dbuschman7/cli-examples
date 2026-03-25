@@ -307,6 +307,64 @@ class HostFile:
 
         return success_count, fail_count
 
+    @staticmethod
+    def create_working_copy(
+        gold_file: str,
+        work_dir: str,
+        timestamp_format: str = "%Y%m%d_%H%M%S",
+    ) -> Optional[Path]:
+        """
+        Create a timestamped working copy from an immutable gold standard file.
+
+        This implements a copy-on-write pattern where:
+        - The gold file remains untouched (immutable)
+        - A timestamped copy is created in the work directory
+        - Scripts operate on the working copy
+
+        Args:
+            gold_file: Path to the immutable gold standard hosts file
+            work_dir: Directory where timestamped copies should be created
+            timestamp_format: strftime format for timestamp (default: YYYYMMDD_HHMMSS)
+
+        Returns:
+            Path to the timestamped working copy, or None on error
+
+        Example:
+            >>> working_file = HostFile.create_working_copy(
+            ...     "hosts-gold.txt",
+            ...     "./work"
+            ... )
+            >>> hf = HostFile(working_file)
+            >>> # Now work on the copy, gold file untouched
+        """
+        gold_path = Path(gold_file)
+        work_path = Path(work_dir)
+
+        if not gold_path.exists():
+            print(f"Error: Gold file not found: {gold_path}")
+            return None
+
+        try:
+            # Create work directory if it doesn't exist
+            work_path.mkdir(parents=True, exist_ok=True)
+
+            # Generate timestamped filename
+            timestamp = datetime.now().strftime(timestamp_format)
+            stem = gold_path.stem  # filename without extension
+            suffix = gold_path.suffix  # .txt, etc.
+
+            working_filename = f"{stem}_{timestamp}{suffix}"
+            working_file_path = work_path / working_filename
+
+            # Copy gold file to working copy
+            shutil.copy2(gold_path, working_file_path)
+
+            return working_file_path
+
+        except Exception as e:
+            print(f"Error creating working copy: {e}")
+            return None
+
     def backup(self, suffix: Optional[str] = None) -> Optional[Path]:
         """
         Create a backup of the hostfile.
@@ -420,6 +478,9 @@ Examples:
   # Create a new hostfile
   %(prog)s create hosts.txt 192.168.1.100 192.168.1.101
   
+  # Create working copy from gold standard (returns path to working copy)
+  %(prog)s working-copy hosts-gold.txt --work-dir ./work
+  
   # List hosts
   %(prog)s list hosts.txt
   
@@ -451,6 +512,7 @@ Examples:
             "backup",
             "backups",
             "clear",
+            "working-copy",
         ],
         help="Command to execute",
     )
@@ -458,6 +520,15 @@ Examples:
     parser.add_argument("hosts", nargs="*", help="Hostname(s) or IP address(es)")
     parser.add_argument(
         "--no-backup", action="store_true", help="Disable automatic backups"
+    )
+    parser.add_argument(
+        "--work-dir",
+        help="Working directory for timestamped copies (used with working-copy command)",
+    )
+    parser.add_argument(
+        "--timestamp-format",
+        default="%Y%m%d_%H%M%S",
+        help="Format for timestamps (default: YYYYmmdd_HHMMSS)",
     )
 
     args = parser.parse_args()
@@ -529,6 +600,22 @@ Examples:
             print(f"✓ Cleared hosts from {args.file}")
         else:
             print("✗ Failed to clear hostfile")
+            return 1
+
+    elif args.command == "working-copy":
+        if not args.work_dir:
+            print("Error: --work-dir required for working-copy command")
+            return 1
+
+        working_path = HostFile.create_working_copy(
+            args.file, args.work_dir, args.timestamp_format
+        )
+        if working_path:
+            print(f"✓ Created working copy: {working_path}")
+            # Output just the path on a separate line for easy capture in scripts
+            print(working_path)
+        else:
+            print("✗ Failed to create working copy")
             return 1
 
     return 0
