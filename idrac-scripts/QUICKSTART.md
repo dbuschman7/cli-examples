@@ -277,6 +277,37 @@ python hostfile.py backups hosts.txt
 cp hosts.txt.20260325_143000.bak hosts.txt
 ```
 
+### Workflow 4: Set SNMP Community (Production-Safe)
+
+```bash
+# Add SNMP community to .env (secure - not on command line)
+echo "SNMP_COMMUNITY=MySecureCommunity" >> .env
+
+# Create gold file
+python hostfile.py create idrac-prod-gold.txt 192.168.1.100 192.168.1.101
+
+# Dry run first - check what would change
+./set_snmp_community.py idrac-prod-gold.txt --dry-run
+
+# Execute - only updates if needed, verifies success
+./set_snmp_community.py idrac-prod-gold.txt
+
+# Detailed report shows:
+# ✓ Already correct (3 hosts)
+# ✓ Successfully updated (2 hosts)  
+# ✗ Failed (1 host)
+#
+# Gold file preserved, working copy has only failures
+```
+
+**Why this pattern is production-safe:**
+- Gold file never touched - can always retry from scratch
+- SNMP community never exposed in command line or logs
+- Only updates if current value is different
+- Verifies update was successful before removing from list
+- Failed hosts remain in working copy for retry
+- Full audit trail with timestamped working copies
+
 ## Troubleshooting
 
 ### Can't connect to iDRAC

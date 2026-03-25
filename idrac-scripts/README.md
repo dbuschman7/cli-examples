@@ -216,6 +216,44 @@ with client.get_session():
         print(f"Processors: {processors['Members@odata.count']}")
 ```
 
+### Example 4: Set SNMP Community Name with Gold File Pattern
+
+Included script: `set_snmp_community.py`
+
+This production-ready script demonstrates:
+- Gold file pattern for audit trail
+- Secure credential handling (SNMP community from .env)
+- Read-before-write pattern (only update if needed)
+- Comprehensive reporting
+
+```bash
+# Add SNMP community to .env
+echo "SNMP_COMMUNITY=YourSecureCommunity" >> .env
+
+# Create gold file with all iDRACs
+python hostfile.py create idrac-gold.txt 192.168.1.100 192.168.1.101 192.168.1.102
+
+# Dry run - check what would be changed
+./set_snmp_community.py idrac-gold.txt --dry-run
+
+# Execute - creates working copy, updates only if needed
+./set_snmp_community.py idrac-gold.txt
+
+# Output includes detailed report:
+# - Already correct (no change needed)
+# - Updated successfully 
+# - Failed to update
+# - Connection/verification failures
+```
+
+**Key Features:**
+- ✅ Reads current value first - only updates if different
+- ✅ Verifies update was successful before marking as done
+- ✅ SNMP community never exposed in logs (masked as ***)
+- ✅ Gold file remains untouched
+- ✅ Timestamped working copies for audit trail
+- ✅ Detailed report with categorized results
+
 ## Environment Variables
 
 Configure via `.env` file:
@@ -226,6 +264,7 @@ Configure via `.env` file:
 | `IDRAC_PASSWORD` | iDRAC password | **Required** |
 | `IDRAC_VERIFY_CERT` | Verify SSL certificates | `false` |
 | `CERT_PATH` | Path to CA certificate bundle | None |
+| `SNMP_COMMUNITY` | SNMP v1/v2c community string | None |
 
 ## Host File Format
 
