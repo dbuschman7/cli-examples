@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+*.venv/
+
+# Environment variables - NEVER COMMIT!
+.env
+
+# Author mappings (may contain email addresses)
+authors.txt
+
+# Host files and backups
+hosts.txt
+*.bak
+*.backup
+
+# Output files
+*.parquet
+*.duckdb
+*.db
+*.json
+*.csv
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,10 @@
+# RCS to Git Author Mapping
+#
+# Format: rcs_username = Full Name <email@example.com>
+#
+# Map your RCS usernames to proper Git author format below:
+
+# Example mappings:
+# jdoe = John Doe <jdoe@example.com>
+# admin = System Administrator <admin@example.com>
+# root = Root User <root@localhost>

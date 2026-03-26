@@ -1,0 +1,15 @@
+# Git Shadow RCS - Python Dependencies
+# 
+# This project monitors RCS directories and syncs commits to Git
+# 
+# No external dependencies required - uses only Python standard library
+# However, system commands must be installed:
+#   - rlog (from RCS package)
+#   - co (from RCS package)  
+#   - git
+#
+# To install RCS on macOS:
+#   brew install rcs
+#
+# To install RCS on Ubuntu/Debian:
+#   sudo apt-get install rcs
